@@ -1,0 +1,7 @@
+.npm/
+.venv/
+*.swp
+public/
+resources/_gen/
+.hugo_build.lock
+archive/
