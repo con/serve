@@ -6,9 +6,13 @@ This project creates a comprehensive knowledge base website cataloging tools and
 
 The working directory (`/home/yoh/doc/papers.withothers/2026-data-hoarder`) is an existing DataLad dataset (has `.datalad/`, `.git/`, `.noannex`). We will build the Hugo site directly within this repo.
 
+We will share this repository under https://github.com/con/serve and serve website from gh_pages there.
+
 ## Step 1: Install Hugo and Initialize Site
 
-- Install Hugo via apt: `sudo apt install hugo`
+Use `uv` and `uv pip` where feasible for installation of necessary components.
+
+- Install Hugo via pip under uv: `uv venv && source .venv/bin/activate && uv pip install hugo`
 - Verify: `hugo version`
 - Initialize Hugo site in the current directory (not `hugo new site` which creates a subdirectory - instead manually create the structure since this is an existing git repo)
 - Install Congo theme via git submodule (preferred over Hugo modules since this is a DataLad/git-annex repo where submodules are natural):
@@ -119,7 +123,7 @@ params:
 2. **annextube.md** - Detailed coverage as the flagship YouTube archival tool (from ~/proj/annextube)
 3. **entire-io.md** - AI session archival with shadow branches, metadata branch, attribution tracking
 4. **forgejo-aneksajo.md** - Self-hosted git-annex hosting, DataLad Hub foundation
-5. **lab-in-a-box.md** - pyinfra-based deployment of complete research infrastructure
+5. **lab-in-a-box.md** - pyinfra-based deployment of complete research infrastructure to "con/serve" to
 
 ### Standard content (write with key details):
 - All other tool pages with description, features, installation, git-annex/DataLad integration notes, AI readiness assessment
@@ -155,7 +159,7 @@ Include:
 ### TODOs section in README:
 - [ ] Develop Claude Code SKILL (`/conserve.add-tool`) for adding new tool entries with proper taxonomies
 - [ ] Set up GitHub Pages deployment via GitHub Actions
-- [ ] Create custom domain: conserve.centerforopenneuroscience.org
+- [ ] Create a sample (fully or partially private) deployment at e.g. conserve.centerforopenneuroscience.org
 - [ ] Integrate Entire.io for ongoing AI session archival during development
 - [ ] Add comparison matrix page (tool x feature grid)
 - [ ] Create archival workflow guides (step-by-step for each media type)
