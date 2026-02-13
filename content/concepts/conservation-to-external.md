@@ -148,6 +148,56 @@ For very large datasets, use distribution mechanisms that scale:
 - **Web special remote**: register download URLs so consumers can `git annex get` from the original source
 - **CDN-backed S3**: put content on S3 behind CloudFront or similar
 
+## Privacy-Aware Distribution
+
+Not all vault content should reach all remotes.
+Many ingested artifacts come from restricted sources -- private Slack workspaces, access-controlled cloud drives, embargoed manuscripts, or recordings with consent constraints.
+The vault preserves them, but distribution must respect their original access restrictions.
+
+git-annex's `wanted` expressions can encode these boundaries using custom metadata.
+In practice, we use a `distribution-restrictions` metadata field:
+
+```bash
+# Mark restricted content
+git annex metadata --set distribution-restrictions=private  some/private/file
+git annex metadata --set distribution-restrictions=sensitive some/sensitive/data
+
+# Public-facing remote: only DataLad metadata (always needed) and
+# anything NOT marked with distribution restrictions
+git annex wanted origin \
+    "include=.datalad/* and (not metadata=distribution-restrictions=*)"
+
+# Encrypted backup gets everything -- no restrictions
+git annex wanted s3-encrypted "anything"
+
+# Lab-internal Forgejo gets everything except sensitive
+git annex wanted lab-forgejo \
+    "not metadata=distribution-restrictions=sensitive"
+```
+
+Combined with repository-level access control (private repos on GitHub or Forgejo) and encryption on special remotes, this gives fine-grained control over what leaves the vault and in what form.
+
+### Collect Metadata at Ingestion Time
+
+These distribution decisions can only be made if the relevant metadata exists.
+This places an obligation on the *ingestion* side of the pipeline:
+when archiving artifacts, capture and record the provenance and rights information
+needed to make distribution decisions later.
+
+Metadata to collect at ingestion time:
+
+- **Original owner / copyright holder** -- who created or owns the content
+- **License** -- under what terms it was originally shared (Creative Commons, institutional policy, proprietary, etc.)
+- **Source access level** -- was this from a public channel, a private workspace, a restricted drive, an authenticated portal?
+- **Consent constraints** -- for recordings: were participants informed? Was consent given for internal use only, or for broader distribution?
+- **Data Use Ontology ([DUO](https://github.com/EBISPOT/DUO))** -- for research data, DUO provides a standardized vocabulary for data use conditions (e.g., "general research use", "disease-specific research", "no general methods research"). Annotating datasets with DUO terms at ingestion time enables machine-readable access decisions downstream.
+- **Embargo periods** -- does the content have a time-limited restriction (e.g., pre-publication embargo, grant reporting period)?
+
+The principle is: **you cannot selectively distribute what you have not annotated**.
+Collecting rights and provenance metadata at ingestion time --
+even when immediate distribution is not planned --
+preserves the ability to make informed sharing decisions in the future.
+
 ## Content Policies
 
 git-annex's `numcopies` and `required` settings let you express policies about where content must exist:

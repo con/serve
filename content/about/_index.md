@@ -85,6 +85,48 @@ The goal is not to hoard indiscriminately.
 It is to make a *deliberate choice* about what to conserve
 and to have the infrastructure to act on that choice in time.
 
+## Privacy and Access Control
+
+Archival and openness are complementary goals, not synonymous ones.
+Many of the artifacts con/serve helps you archive originate from restricted sources:
+
+- **Private messaging platforms** -- Slack workspaces, Mattermost teams, and Matrix rooms where conversations are confidential by default
+- **Access-controlled cloud storage** -- Google Drive folders, Dropbox shared spaces, or institutional OneDrive with restricted permissions
+- **Embargoed or pre-publication materials** -- manuscripts under review, grant proposals, internal reports
+- **Recordings with consent constraints** -- Zoom meetings, lab meeting recordings, or lectures where participants consented to internal use only
+- **Institutional resources** -- internal wikis, VPN-protected intranets, authentication-gated portals
+
+Archiving these into the vault preserves them against platform loss
+without altering their confidentiality requirements.
+git-annex's content-addressed storage and special remote system
+makes this practical:
+
+- **Private remotes**: content can be stored on encrypted S3, local NAS,
+  or institutional Forgejo instances with access control,
+  while public-facing siblings receive only the subset you choose to publish
+- **Selective distribution**: `git annex wanted` expressions
+  use custom metadata to control what reaches each remote --
+  e.g., `"include=.datalad/* and (not metadata=distribution-restrictions=*)"` ensures
+  a public-facing remote only receives content not marked as private or sensitive
+- **Repository-level access**: the git repository itself can be private
+  (private GitHub/Forgejo repo), even while some of its published datasets
+  are openly accessible via domain archives
+- **Encryption**: git-annex special remotes support encryption at rest,
+  so even backup providers cannot read the archived content
+
+The guiding principle is **archive aggressively, distribute selectively**.
+Every artifact should be safely preserved under your control,
+but the decision about what to make public is separate from the decision to archive.
+
+This selective distribution only works if the necessary metadata is available.
+Ingestion tools should capture provenance and rights information --
+original owner, copyright, license, source access level, consent constraints --
+at the time of archival, so that distribution decisions can be made later.
+For research data, the [Data Use Ontology (DUO)](https://github.com/EBISPOT/DUO)
+provides a standardized vocabulary for machine-readable data use conditions.
+See [Privacy-Aware Distribution]({{< ref "conservation-to-external#privacy-aware-distribution" >}})
+for practical examples.
+
 ## Integration Levels
 
 Each tool in the catalog is classified by how deeply it integrates

@@ -230,6 +230,32 @@ It is to make a *deliberate choice* about what to conserve,
 and to have the tools and infrastructure to act on that choice
 before the frontier freezes over.
 
+## Privacy and the Vault
+
+Not everything in the vault is meant to be shared.
+Many ingested artifacts originate from restricted sources --
+private Slack workspaces, institutional email lists, access-controlled cloud drives,
+embargoed manuscripts, confidential Zoom recordings, or internal wikis behind VPNs.
+Archiving them into git-annex does not change their access status;
+it simply ensures they are preserved under *your* control
+rather than depending on a third party's retention policy.
+
+git-annex's architecture supports this naturally.
+Content can live in private special remotes (encrypted S3, local NAS, institutional Forgejo)
+while the git history and metadata remain in a repository
+that is itself access-controlled.
+Custom metadata like `distribution-restrictions` controls what reaches each remote --
+you decide what gets published to domain archives or GitHub Pages,
+and what stays behind locked doors.
+
+This also means ingestion tools should capture provenance and rights metadata --
+original owner, license, source access level, data use conditions
+([DUO](https://github.com/EBISPOT/DUO)) -- at archival time,
+so that distribution decisions can be made later even if not needed immediately.
+
+The con/serve model is: **archive aggressively, distribute selectively**.
+Conservation and openness are complementary goals, not synonymous ones.
+
 ## Explore
 
 | Section | What you will find |
