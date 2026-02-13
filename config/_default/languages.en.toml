@@ -1,0 +1,20 @@
+languageCode = "en"
+languageName = "English"
+languageDirection = "ltr"
+weight = 1
+
+title = "con/serve"
+
+[params]
+  dateFormat = "2 January 2006"
+
+  mainSections = ["tools", "infrastructure", "concepts"]
+  description = "Conserve and serve digital research artifacts — a knowledge base for archiving everything into git-annex and DataLad repositories."
+
+[params.author]
+  name = "Center for Open Neuroscience"
+  headline = "conserve and serve digital research artifacts"
+  bio = "A comprehensive knowledge base cataloging tools, approaches, and infrastructure for archiving all digital research artifacts into git/git-annex/DataLad repositories."
+  links = [
+    { github = "https://github.com/con/serve" },
+  ]

@@ -1,0 +1,26 @@
+# -- Site Configuration --
+# https://jpanther.github.io/congo/docs/getting-started/
+
+theme = "congo"
+baseURL = "https://con.github.io/serve/"
+defaultContentLanguage = "en"
+
+enableRobotsTXT = true
+summaryLength = 0
+
+[pagination]
+  pagerSize = 20
+
+[outputs]
+  home = ["HTML", "RSS", "JSON"]
+
+[privacy]
+  [privacy.youTube]
+    privacyEnhanced = true
+
+[taxonomies]
+  category = "categories"
+  tag = "tags"
+  media_type = "media_types"
+  integration = "integrations"
+  ai_readiness = "ai_readiness"

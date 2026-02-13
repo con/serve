@@ -1,0 +1,22 @@
+/* Mermaid diagram pan-zoom container styling */
+.mermaid {
+  overflow: hidden;
+  border: 1px solid rgba(128, 128, 128, 0.2);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  position: relative;
+  min-height: 400px;
+}
+.mermaid svg {
+  max-width: none !important;
+  height: auto !important;
+}
+.mermaid::after {
+  content: "Scroll to zoom, drag to pan";
+  position: absolute;
+  bottom: 0.5rem;
+  right: 0.5rem;
+  font-size: 0.75rem;
+  color: rgba(128, 128, 128, 0.6);
+  pointer-events: none;
+}

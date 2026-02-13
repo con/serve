@@ -1,0 +1,23 @@
+{{ with .Params.repo }}
+<div class="tool-meta not-prose" style="margin-bottom: 1.5rem; padding: 1rem; border: 1px solid rgba(128,128,128,0.2); border-radius: 0.5rem; font-size: 0.875rem; line-height: 1.5;">
+  <div style="display: flex; flex-wrap: wrap; gap: 0.5rem 2rem;">
+    <div><strong>Repository:</strong> <a href="{{ . }}" target="_blank" rel="noopener">{{ . }}</a></div>
+    {{ with $.Params.homepage }}{{ if ne . $.Params.repo }}<div><strong>Homepage:</strong> <a href="{{ . }}" target="_blank" rel="noopener">{{ . }}</a></div>{{ end }}{{ end }}
+    {{ with $.Params.issues }}<div><strong>Issues:</strong> <a href="{{ . }}" target="_blank" rel="noopener">{{ . }}</a></div>{{ end }}
+    {{ with $.Params.docs }}<div><strong>Docs:</strong> <a href="{{ . }}" target="_blank" rel="noopener">{{ . }}</a></div>{{ end }}
+    {{ with $.Params.discussions }}<div><strong>Discussions:</strong> <a href="{{ . }}" target="_blank" rel="noopener">{{ . }}</a></div>{{ end }}
+    {{ with $.Params.language }}<div><strong>Language:</strong> {{ . }}</div>{{ end }}
+    {{ with $.Params.license }}<div><strong>License:</strong> {{ . }}</div>{{ end }}
+    {{ with $.Params.maturity }}<div><strong>Maturity:</strong> {{ . }}</div>{{ end }}
+    {{ with $.Params.last_verified }}<div><strong>Verified:</strong> {{ . }}</div>{{ end }}
+  </div>
+  {{ with $.Params.examples }}
+  <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(128,128,128,0.15);">
+    <strong>Examples:</strong>
+    {{ range . }}
+      <a href="{{ .url }}" target="_blank" rel="noopener" style="margin-left: 0.5rem;">{{ .title }}</a>{{ if not (eq . (index $.Params.examples (sub (len $.Params.examples) 1))) }} | {{ end }}
+    {{ end }}
+  </div>
+  {{ end }}
+</div>
+{{ end }}
