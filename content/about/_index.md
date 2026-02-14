@@ -63,27 +63,39 @@ every type of digital artifact a research group produces or depends on.
 
 ## Frozen Frontiers
 
-Digital artifacts have a half-life.
-When a SaaS provider changes its API, raises prices, or shuts down,
-the artifacts it hosted cross a **Frozen Frontier** --
-the boundary beyond which they become inaccessible or unrecoverable.
+Every productive workflow establishes **Frozen Frontiers** --
+deliberate boundaries where earlier stages are distilled
+into a working surface suitable for the next step.
+We compile source code into binaries.
+We preprocess raw scans into analysis-ready datasets.
+We condense months of Slack threads into a design document.
+Each frontier lets you work at the right level of abstraction
+without dragging the full burden of prior stages along.
 
-Examples of Frozen Frontiers:
+This is how work gets done -- and it applies across every artifact type:
 
-- Slack free-tier message retention limits (messages older than 90 days disappear)
-- Zoom cloud recording expiration (auto-deleted after a configurable period)
-- Google Drive storage quota enforcement (files in shared drives become inaccessible)
-- Code forge shutdowns (Google Code, Gitorious, BitBucket Mercurial repos)
-- AI session history purges (conversation logs deleted after inactivity)
+| Stage | Frozen frontier | Working surface |
+|---|---|---|
+| Source code | Compilation | Binary / container image |
+| Raw neuroimaging data | BIDS conversion | Analysis-ready dataset |
+| Slack/Matrix threads | Archival + summarization | Decision log / design doc |
+| Literature search | Citation collection | Reference library |
+| AI coding sessions | Session export | Commit history + docs |
 
-Every tool in con/serve pushes the Frozen Frontier further out:
-by archiving artifacts *before* they cross the boundary,
-you convert ephemeral, platform-dependent content
-into durable, self-hosted, version-controlled assets.
+The risk is not the frontier itself but **losing what lies behind it**.
+When the source repo is deleted, the Slack workspace is shut down,
+the Zoom recordings expire, or the AI session history is purged,
+the frontier is no longer just frozen -- it is **sealed**,
+and reproducibility, auditing, and course correction become impossible.
 
-The goal is not to hoard indiscriminately.
-It is to make a *deliberate choice* about what to conserve
-and to have the infrastructure to act on that choice in time.
+con/serve addresses both sides:
+
+1. **Establish frontiers** -- archive and transform artifacts into durable,
+   structured forms ready for the next stage of work.
+2. **Keep them traversable** -- because everything lands in a version-controlled,
+   content-addressed vault, you retain the ability to go back through
+   any frontier that ever existed: from the binary to the source,
+   from the figure to the raw data, from the summary to the original conversation.
 
 ## Privacy and Access Control
 

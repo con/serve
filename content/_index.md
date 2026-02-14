@@ -212,23 +212,32 @@ your research touches.
 
 ## Frozen Frontiers
 
-Digital artifacts have a half-life.
-Slack workspaces get deleted.
-Zoom recordings expire.
-Free-tier cloud storage vanishes.
-SaaS APIs change without notice.
-AI conversation history is ephemeral by default.
+Every productive workflow establishes **Frozen Frontiers** --
+deliberate boundaries where earlier stages are distilled
+into a working surface suitable for the next step.
 
-We call these **Frozen Frontiers** -- the boundary beyond which a research artifact
-becomes frozen in place (inaccessible, unrecoverable, or locked behind a defunct service)
-if it is not proactively archived.
-Every tool cataloged in con/serve pushes that frontier further out,
-buying time and preserving access to artifacts that would otherwise be lost.
+We compile source code into binaries.
+We preprocess raw data into analysis-ready tables.
+We summarize a month of Slack threads into a design document.
+We condense literature searches into a reference library.
+Each frontier lets you work at the right level of abstraction
+without dragging the full burden of prior stages along.
 
-The goal is not to hoard everything indiscriminately.
-It is to make a *deliberate choice* about what to conserve,
-and to have the tools and infrastructure to act on that choice
-before the frontier freezes over.
+This is not a problem to solve -- it is *how work gets done*.
+The problem arises when the connection to what lies behind a frontier
+is severed: the source code is lost, the raw data is deleted,
+the Slack workspace is shut down, the AI session history is purged.
+Then the frontier is not just frozen -- it is **sealed**,
+and reproducibility, auditing, and course correction become impossible.
+
+con/serve addresses both sides.
+The tools it catalogs help you **establish** frozen frontiers --
+archiving and transforming artifacts into durable, structured forms
+ready for the next stage of work.
+And because everything lands in a version-controlled, content-addressed vault,
+you retain the ability to **traverse back** through any frontier that ever existed:
+from the binary to the source, from the figure to the raw data,
+from the summary to the original conversation.
 
 ## Privacy and the Vault
 
