@@ -131,18 +131,18 @@ Links to related tools, upstream documentation, and relevant concepts pages.
 
 ### 6. Choosing taxonomy values
 
-**Integration level** -- how does the tool interact with git-annex/DataLad?
+**Integration level** (`integrations` field) -- choose one or more of:
+[`native-datalad`](/integrations/native-datalad/),
+[`git-annex`](/integrations/git-annex/),
+[`git-only`](/integrations/git-only/),
+[`external`](/integrations/external/).
+See [Integration Levels](/about/#integration-levels) for detailed definitions and examples.
 
-- `native-datalad`: The tool is a DataLad extension or produces DataLad datasets directly
-- `git-annex`: Works with git-annex for content tracking but is not DataLad-specific
-- `git-only`: Stores in git natively, no annex needed (typically for text-based artifacts)
-- `external`: Requires manual steps to import output into git/annex
-
-**AI readiness** -- how consumable is the output for LLM workflows?
-
-- `ai-ready`: Structured text/JSON, directly usable by an LLM
-- `ai-partial`: Structured metadata present, but content may need extraction or conversion
-- `ai-manual`: Binary/media content requiring transcription, OCR, or similar processing
+**AI readiness** (`ai_readiness` field) -- choose one or more of:
+[`ai-ready`](/ai_readiness/ai-ready/),
+[`ai-partial`](/ai_readiness/ai-partial/),
+[`ai-manual`](/ai_readiness/ai-manual/).
+See [AI Readiness Levels](/about/#ai-readiness-levels) for detailed definitions and examples.
 
 When in doubt, a tool can have multiple values
 (e.g., a tool that produces both JSON metadata and video files

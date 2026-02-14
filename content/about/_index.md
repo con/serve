@@ -318,22 +318,23 @@ for practical examples.
 ## Integration Levels
 
 Each tool in the catalog is classified by how deeply it integrates
-with the git-annex/DataLad stack:
+with the git-annex/DataLad stack.
+Browse all tools by [integration level](/integrations/).
 
-**native-datalad** -- The tool is a DataLad extension or produces DataLad datasets directly.
+[**native-datalad**](/integrations/native-datalad/) -- The tool is a DataLad extension or produces DataLad datasets directly.
 Examples: annextube, datalad-crawler, wayslack2, citations-collector.
 These provide the smoothest experience: dataset creation, content tracking,
 and provenance recording happen automatically.
 
-**git-annex** -- The tool works with git-annex but is not DataLad-specific.
+[**git-annex**](/integrations/git-annex/) -- The tool works with git-annex but is not DataLad-specific.
 Examples: yt-dlp with `git annex import`, gallery-dl, rclone as special remote.
 Integration requires manual steps but is well-supported.
 
-**git-only** -- The tool stores output in git without annex support.
+[**git-only**](/integrations/git-only/) -- The tool stores output in git without annex support.
 Examples: git-bug, gh-md, tg-archive.
 Suitable for text-based artifacts where git's native tracking is sufficient.
 
-**external** -- The tool produces output that must be manually imported into git/annex.
+[**external**](/integrations/external/) -- The tool produces output that must be manually imported into git/annex.
 Examples: ArchiveBox, SingleFile, Browsertrix.
 These tools are valuable but require wrapper scripts or manual workflows
 to fit into the git-annex/DataLad ecosystem.
@@ -341,19 +342,20 @@ to fit into the git-annex/DataLad ecosystem.
 ## AI Readiness Levels
 
 Each tool is also classified by how consumable its output is
-for LLM-based workflows:
+for LLM-based workflows.
+Browse all tools by [AI readiness level](/ai_readiness/).
 
-**ai-ready** -- Output is structured text or JSON that an LLM can consume directly.
+[**ai-ready**](/ai_readiness/ai-ready/) -- Output is structured text or JSON that an LLM can consume directly.
 Examples: Slack JSON exports, GitHub issue JSON, citation metadata.
 These artifacts can feed directly into AI-assisted analysis,
 summarization, and search workflows.
 
-**ai-partial** -- Output includes structured metadata but the primary content
+[**ai-partial**](/ai_readiness/ai-partial/) -- Output includes structured metadata but the primary content
 may need processing.
 Examples: web archives with HTML that needs extraction,
 email archives with attachments that need parsing.
 
-**ai-manual** -- Output is primarily binary or media content
+[**ai-manual**](/ai_readiness/ai-manual/) -- Output is primarily binary or media content
 that requires transcription, OCR, or other processing before an LLM can use it.
 Examples: video recordings, audio files, image datasets.
 The metadata (titles, descriptions, timestamps) may still be ai-ready.

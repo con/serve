@@ -21,22 +21,13 @@ Communications, Media, Code Artifacts, Cloud Storage, Publications, Web, AI Sess
 **Media type** -- the specific format or platform (e.g., `slack`, `youtube`, `github-issues`).
 A tool may handle multiple media types.
 
-**Integration level** -- how deeply the tool integrates with the git-annex/DataLad stack:
+**[Integration level](/integrations/)** -- how deeply the tool integrates with the git-annex/DataLad stack:
+[`native-datalad`](/integrations/native-datalad/) | [`git-annex`](/integrations/git-annex/) | [`git-only`](/integrations/git-only/) | [`external`](/integrations/external/)
+-- see [Integration Levels](/about/#integration-levels) for definitions.
 
-| Level | Meaning |
-|---|---|
-| `native-datalad` | Direct DataLad integration or plugin |
-| `git-annex` | Works with git-annex but not DataLad-specific |
-| `git-only` | Stores output in git without annex support |
-| `external` | Requires manual import into git/annex |
-
-**AI readiness** -- how consumable the archived output is for LLM-based workflows:
-
-| Level | Meaning |
-|---|---|
-| `ai-ready` | Structured text/JSON that AIs can directly consume |
-| `ai-partial` | Structured metadata but content may need processing |
-| `ai-manual` | Primarily binary/media requiring transcription for AI use |
+**[AI readiness](/ai_readiness/)** -- how consumable the archived output is for LLM-based workflows:
+[`ai-ready`](/ai_readiness/ai-ready/) | [`ai-partial`](/ai_readiness/ai-partial/) | [`ai-manual`](/ai_readiness/ai-manual/)
+-- see [AI Readiness Levels](/about/#ai-readiness-levels) for definitions.
 
 ## Sections
 
