@@ -62,6 +62,21 @@ Good for a single analysis project.
 Entirely code+data oriented --
 no concept of communications, media, or heterogeneous artifact types.
 
+**[Kedro](https://docs.kedro.org/en/stable/get_started/kedro_concepts.html)** --
+A Python data engineering framework that adds two ideas on top of Cookiecutter-style layout:
+a **numbered data-layer hierarchy**
+(`data/01_raw/`, `02_intermediate/`, `03_primary/`, ... `08_reporting/`)
+encoding pipeline stages in directory names,
+and a **Data Catalog** (`conf/catalog.yml`)
+that decouples logical dataset names from physical paths and formats.
+The catalog abstraction is an interesting parallel to DataLad metadata --
+both let you refer to data by name rather than path.
+But Kedro is fundamentally a pipeline execution framework (a DAG of Python functions),
+not a storage layout standard;
+its directory structure serves pipeline stages, not archival organization.
+For a detailed comparison of Kedro and DataLad/YODA approaches,
+see the [DataLad Handbook draft chapter](https://github.com/datalad-handbook/book/pull/1282).
+
 **[Harvard RDM](https://datamanagement.hms.harvard.edu/plan-design/directory-structure)** /
 university guides --
 Generic advice: organize by project, time, location, or file type.
