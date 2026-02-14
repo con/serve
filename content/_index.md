@@ -37,66 +37,66 @@ flowchart LR
         direction TB
 
         subgraph comm["Communications"]
-            slack["Slack\n(slackdump)"]
-            telegram["Telegram\n(tg-archive)"]
-            matrix["Matrix\n(con/versations)"]
-            mattermost["Mattermost\n(mmctl export)"]
-            email["Email\n(offlineimap)"]
+            slack["Slack<br>(slackdump)"]
+            telegram["Telegram<br>(tg-archive)"]
+            matrix["Matrix<br>(con/versations)"]
+            mattermost["Mattermost<br>(mmctl export)"]
+            email["Email<br>(offlineimap)"]
         end
 
         subgraph media["Media"]
-            youtube["YouTube\n(annextube)"]
-            zoom["Zoom\nrecordings"]
-            podcasts["Podcasts\n(yt-dlp)"]
+            youtube["YouTube<br>(annextube)"]
+            zoom["Zoom<br>recordings"]
+            podcasts["Podcasts<br>(yt-dlp)"]
         end
 
         subgraph code["Code Artifacts"]
-            issues["Issues/PRs\n(git-bug)"]
-            discussions["Discussions\n(gh export)"]
-            wikis["Wikis\n(gh-md)"]
+            issues["Issues/PRs<br>(git-bug)"]
+            discussions["Discussions<br>(gh export)"]
+            wikis["Wikis<br>(gh-md)"]
         end
 
         subgraph neuro["NeuroImaging"]
             dicom["DICOM / PACS"]
-            stimuli["Stimuli\n(ReproStim)"]
-            events["Events\n(CurDes BIRCH)"]
-            environ["Environment\n(temp/humidity)"]
+            stimuli["Stimuli<br>(ReproStim)"]
+            events["Events<br>(CurDes BIRCH)"]
+            environ["Environment<br>(temp/humidity)"]
         end
 
         subgraph ai["AI Sessions"]
-            claude["Claude Code\n(cctrace)"]
-            cursor["Cursor\n(SpecStory)"]
+            claude["Claude Code<br>(cctrace)"]
+            cursor["Cursor<br>(SpecStory)"]
             entireio["Entire.io"]
         end
 
         subgraph pubs["Publications"]
-            citations["Citations\n(citations-collector)"]
-            pdfs["PDFs\n(Unpaywall)"]
+            citations["Citations<br>(citations-collector)"]
+            pdfs["PDFs<br>(Unpaywall)"]
         end
     end
 
     %% CENTER HUB
     subgraph HUB["THE VAULT"]
         direction TB
-        ga["git-annex\ncontent-addressed storage"]
-        dl["DataLad\ndataset management"]
-        forgejo["Forgejo-aneksajo\nself-hosted"]
-        principles["YODA / STAMPED\nprinciples"]
+        ga["git-annex<br>content-addressed storage"]
+        dl["DataLad<br>dataset management"]
+        forgejo["Forgejo-aneksajo<br>self-hosted"]
+        principles["YODA / STAMPED<br>principles"]
 
-        subgraph harmonize["Data Organization\n& Harmonization"]
-            bids["BIDS\n(HeuDiConv/ReproIn)"]
+        subgraph harmonize["Data Organization<br>& Harmonization"]
+            bids["BIDS<br>(HeuDiConv/ReproIn)"]
             nwb["NWB"]
             yoda_layout["YODA layout"]
         end
 
         subgraph surfaces["Working Surfaces"]
-            hedgedoc_int["HedgeDoc\n(collaborative docs)"]
-            hugo_int["Hugo website\n(con/serve)"]
+            hedgedoc_int["HedgeDoc<br>(collaborative docs)"]
+            hugo_int["Hugo website<br>(con/serve)"]
         end
 
         subgraph ai_assist["AI Assistance"]
-            llm["LLM agents\n(Claude Code, etc.)"]
-            skills["Skills & prompts\n(con/serve SKILL)"]
+            llm["LLM agents<br>(Claude Code, etc.)"]
+            skills["Skills & prompts<br>(con/serve SKILL)"]
         end
 
         ga --- dl
@@ -120,13 +120,13 @@ flowchart LR
         subgraph archives["Domain Archives"]
             openneuro["OpenNeuro"]
             dandi["DANDI"]
-            osf["OSF\n(datalad-osf)"]
+            osf["OSF<br>(datalad-osf)"]
             ember["EMBER"]
             dlhub["DataLad Hub"]
         end
 
         subgraph kb["Knowledge Bases"]
-            inst_wiki["Institutional\nwikis"]
+            inst_wiki["Institutional<br>wikis"]
         end
 
         subgraph webpub["Web Publishing"]
@@ -134,7 +134,7 @@ flowchart LR
         end
 
         subgraph refmgr["Reference Managers"]
-            zotero["Zotero\n(sync)"]
+            zotero["Zotero<br>(sync)"]
         end
     end
 
@@ -147,14 +147,14 @@ flowchart LR
     pubs -->|collect| HUB
 
     %% CONNECTIONS: Hub -> Outbound
-    HUB -->|"special\nremote"| cloud_out
+    HUB -->|"special<br>remote"| cloud_out
     HUB -->|publish| archives
     HUB -->|export| kb
     HUB -->|deploy| webpub
     HUB -->|sync| refmgr
 
     %% rclone as bidirectional bridge
-    rclone{{"rclone\n(70+ providers)"}}
+    rclone{{"rclone<br>(70+ providers)"}}
     rclone <-.->|ingest & backup| HUB
     rclone <-.-> cloud_out
 
