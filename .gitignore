@@ -6,3 +6,5 @@ resources/_gen/
 .hugo_build.lock
 archive/
 .wget-hsts
+# for now at least
+projects/
