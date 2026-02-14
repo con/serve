@@ -24,6 +24,18 @@ direct download, API extraction, crawling, mounting, and bridging.
 How to publish and back up from your git-annex vault
 to cloud storage, domain archives, and institutional repositories.
 
+**[Vault Organization](vault-organization/)** --
+Survey of directory organization approaches --
+PARA, Johnny Decimal, BagIt, OCFL, RO-Crate, BIDS, hive partitioning --
+and the principles that should guide
+the layout of a heterogeneous DataLad superdataset vault.
+
+**[Data-Visualization Separation](data-visualization-separation/)** --
+The MVC principle applied to archived data:
+keep collected data in standard formats (TSV, JSON, Parquet),
+build hierarchical summaries for navigation,
+and let use-case-appropriate viewers (VisiData, Datasette, custom HTML) attach freely.
+
 **[Domain Extensions](domain-extensions/)** --
 How the generic con/serve platform extends
 to domain-specific workflows like neuroimaging, genomics, or digital humanities,
