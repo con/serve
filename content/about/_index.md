@@ -21,6 +21,175 @@ Slack conversations, Zoom recordings, GitHub discussions,
 AI coding sessions, cloud-hosted documents, and scholarly PDFs
 are all part of the research record -- and all at risk of loss.
 
+## Architecture
+
+{{< mermaid >}}
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#2d3748', 'primaryTextColor': '#fff', 'lineColor': '#718096', 'fontSize': '14px'}}}%%
+
+flowchart LR
+
+    %% INBOUND SOURCES
+    subgraph IN["INBOUND -- Ingestion"]
+        direction TB
+
+        subgraph comm["Communications"]
+            slack["Slack<br>(slackdump)"]
+            telegram["Telegram<br>(tg-archive)"]
+            matrix["Matrix<br>(con/versations)"]
+            mattermost["Mattermost<br>(mmctl export)"]
+            email["Email<br>(offlineimap)"]
+        end
+
+        subgraph media["Media"]
+            youtube["YouTube<br>(annextube)"]
+            zoom["Zoom<br>recordings"]
+            podcasts["Podcasts<br>(yt-dlp)"]
+        end
+
+        subgraph code["Code Artifacts"]
+            issues["Issues/PRs<br>(git-bug)"]
+            discussions["Discussions<br>(gh export)"]
+            wikis["Wikis<br>(gh-md)"]
+        end
+
+        subgraph neuro["NeuroImaging"]
+            dicom["DICOM / PACS"]
+            stimuli["Stimuli<br>(ReproStim)"]
+            events["Events<br>(CurDes BIRCH)"]
+            environ["Environment<br>(temp/humidity)"]
+        end
+
+        subgraph ai["AI Sessions"]
+            claude["Claude Code<br>(cctrace)"]
+            cursor["Cursor<br>(SpecStory)"]
+            entireio["Entire.io"]
+        end
+
+        subgraph pubs["Publications"]
+            citations["Citations<br>(citations-collector)"]
+            pdfs["PDFs<br>(Unpaywall)"]
+        end
+    end
+
+    %% CENTER HUB
+    subgraph HUB["THE VAULT"]
+        direction TB
+        ga["git-annex<br>content-addressed storage"]
+        dl["DataLad<br>dataset management"]
+        forgejo["Forgejo-aneksajo<br>self-hosted"]
+        principles["YODA / STAMPED<br>principles"]
+
+        subgraph harmonize["Data Organization<br>& Harmonization"]
+            bids["BIDS<br>(HeuDiConv/ReproIn)"]
+            nwb["NWB"]
+            yoda_layout["YODA layout"]
+        end
+
+        subgraph surfaces["Working Surfaces"]
+            hedgedoc_int["HedgeDoc<br>(collaborative docs)"]
+            hugo_int["Hugo website<br>(con/serve)"]
+        end
+
+        subgraph ai_assist["AI Assistance"]
+            llm["LLM agents<br>(Claude Code, etc.)"]
+            skills["Skills & prompts<br>(con/serve SKILL)"]
+        end
+
+        ga --- dl
+        dl --- forgejo
+        dl --- principles
+        dl --- harmonize
+        dl --- surfaces
+        ai_assist ---|augment| surfaces
+    end
+
+    %% OUTBOUND TARGETS
+    subgraph OUT["OUTBOUND -- Conservation & Distribution"]
+        direction TB
+
+        subgraph cloud_out["Cloud / Storage"]
+            gdrive_out["Google Drive"]
+            s3_out["S3 / Glacier"]
+            dropbox_out["Dropbox"]
+        end
+
+        subgraph archives["Domain Archives"]
+            openneuro["OpenNeuro"]
+            dandi["DANDI"]
+            osf["OSF<br>(datalad-osf)"]
+            ember["EMBER"]
+            dlhub["DataLad Hub"]
+        end
+
+        subgraph kb["Knowledge Bases"]
+            inst_wiki["Institutional<br>wikis"]
+        end
+
+        subgraph webpub["Web Publishing"]
+            ghpages["GitHub Pages"]
+        end
+
+        subgraph refmgr["Reference Managers"]
+            zotero["Zotero<br>(sync)"]
+        end
+    end
+
+    %% CONNECTIONS: Inbound -> Hub
+    comm -->|archive| HUB
+    media -->|import| HUB
+    code -->|bridge| HUB
+    neuro -->|acquire| HUB
+    ai -->|capture| HUB
+    pubs -->|collect| HUB
+
+    %% CONNECTIONS: Hub -> Outbound
+    HUB -->|"special<br>remote"| cloud_out
+    HUB -->|publish| archives
+    HUB -->|export| kb
+    HUB -->|deploy| webpub
+    HUB -->|sync| refmgr
+
+    %% rclone as bidirectional bridge
+    rclone{{"rclone<br>(70+ providers)"}}
+    rclone <-.->|ingest & backup| HUB
+    rclone <-.-> cloud_out
+
+    %% STYLES
+    classDef inbound fill:#2b6cb0,stroke:#2c5282,color:#fff,stroke-width:2px
+    classDef hub fill:#d69e2e,stroke:#b7791f,color:#1a202c,stroke-width:3px
+    classDef outbound fill:#2f855a,stroke:#276749,color:#fff,stroke-width:2px
+    classDef bidir fill:#6b46c1,stroke:#553c9a,color:#fff,stroke-width:2px,stroke-dasharray: 5 5
+    classDef harmonizeNode fill:#e07b39,stroke:#c05621,color:#fff,stroke-width:2px
+
+    class slack,telegram,matrix,mattermost,email,youtube,zoom,podcasts,issues,discussions,wikis,dicom,stimuli,events,environ,claude,cursor,entireio,citations,pdfs inbound
+    class ga,dl,forgejo,principles hub
+    class bids,nwb,yoda_layout harmonizeNode
+    class hedgedoc_int,hugo_int harmonizeNode
+    class llm,skills harmonizeNode
+    class gdrive_out,s3_out,dropbox_out,openneuro,dandi,osf,ember,dlhub,inst_wiki,ghpages,zotero outbound
+    class rclone bidir
+
+    style IN fill:#ebf8ff,stroke:#2b6cb0,stroke-width:2px,color:#2b6cb0
+    style HUB fill:#fefcbf,stroke:#d69e2e,stroke-width:3px,color:#744210
+    style OUT fill:#f0fff4,stroke:#2f855a,stroke-width:2px,color:#2f855a
+
+    style comm fill:#bee3f8,stroke:#2b6cb0,color:#2c5282
+    style media fill:#bee3f8,stroke:#2b6cb0,color:#2c5282
+    style code fill:#bee3f8,stroke:#2b6cb0,color:#2c5282
+    style neuro fill:#bee3f8,stroke:#2b6cb0,color:#2c5282
+    style ai fill:#bee3f8,stroke:#2b6cb0,color:#2c5282
+    style pubs fill:#bee3f8,stroke:#2b6cb0,color:#2c5282
+    style harmonize fill:#fbd38d,stroke:#e07b39,stroke-width:2px,color:#744210
+    style surfaces fill:#fbd38d,stroke:#e07b39,stroke-width:2px,color:#744210
+    style ai_assist fill:#fbd38d,stroke:#e07b39,stroke-width:2px,color:#744210
+
+    style cloud_out fill:#c6f6d5,stroke:#2f855a,color:#276749
+    style archives fill:#c6f6d5,stroke:#2f855a,color:#276749
+    style kb fill:#c6f6d5,stroke:#2f855a,color:#276749
+    style webpub fill:#c6f6d5,stroke:#2f855a,color:#276749
+    style refmgr fill:#c6f6d5,stroke:#2f855a,color:#276749
+{{< /mermaid >}}
+
 ## YODA and How con/serve Extends It
 
 [YODA](https://handbook.datalad.org/en/latest/basics/101-127-yoda.html)
@@ -72,6 +241,8 @@ We condense months of Slack threads into a design document.
 Each frontier lets you work at the right level of abstraction
 without dragging the full burden of prior stages along.
 
+![Frozen Frontiers: working surfaces at different depths](https://datasets.datalad.org/centerforopenneuroscience/talks/pics/surface-depth-v2.jpg "Each working surface is a frozen frontier over deeper layers of raw artifacts")
+
 This is how work gets done -- and it applies across every artifact type:
 
 | Stage | Frozen frontier | Working surface |
@@ -96,6 +267,11 @@ con/serve addresses both sides:
    content-addressed vault, you retain the ability to go back through
    any frontier that ever existed: from the binary to the source,
    from the figure to the raw data, from the summary to the original conversation.
+
+For more on Frozen Frontiers, see the
+[YODA & BIDS webinar slide](https://datasets.datalad.org/centerforopenneuroscience/talks/2026-repronim-YODA-BIDS-webinar.html#/6/23)
+and the corresponding
+[video segment](https://datasets.datalad.org/repronim/ReproTube/web/#/channel/ReproNim/video/1XbTbJ_P2x0?tab=local&wide=1&t=2711&q=Frontier&filter=1).
 
 ## Privacy and Access Control
 

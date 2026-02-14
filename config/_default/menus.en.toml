@@ -1,23 +1,23 @@
 # -- Main Menu --
 
 [[main]]
+  name = "About"
+  pageRef = "about"
+  weight = 10
+
+[[main]]
   name = "Tools"
   pageRef = "tools"
-  weight = 10
+  weight = 20
 
 [[main]]
   name = "Infrastructure"
   pageRef = "infrastructure"
-  weight = 20
+  weight = 30
 
 [[main]]
   name = "Concepts"
   pageRef = "concepts"
-  weight = 30
-
-[[main]]
-  name = "About"
-  pageRef = "about"
   weight = 40
 
 [[main]]
