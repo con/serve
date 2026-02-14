@@ -55,6 +55,11 @@
   padding: 2rem;
   overflow: hidden;
 }
+.mermaid:fullscreen svg,
+.mermaid:-webkit-full-screen svg {
+  width: 100% !important;
+  height: 100% !important;
+}
 .dark .mermaid:fullscreen,
 .dark .mermaid:-webkit-full-screen {
   background: #1a202c;

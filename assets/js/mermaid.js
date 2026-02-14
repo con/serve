@@ -51,7 +51,10 @@ mermaid.initialize({
     svg.style.maxWidth = "none";
     svg.removeAttribute("width");
 
-    // Ensure the SVG has width/height for svg-pan-zoom to work with
+    // Set explicit pixel dimensions from the container so svg-pan-zoom can
+    // compute correct transforms (it strips viewBox, so % / auto won't work)
+    svg.setAttribute("width", container.clientWidth);
+    svg.setAttribute("height", container.clientHeight);
     svg.style.width = "100%";
     svg.style.height = "100%";
 
@@ -88,14 +91,23 @@ mermaid.initialize({
 
   // Re-fit the diagram when entering or leaving fullscreen
   document.addEventListener("fullscreenchange", function () {
-    // Small delay to let the browser finish the fullscreen transition
-    setTimeout(function () {
-      panZoomInstances.forEach(function (instance) {
-        instance.resize();
-        instance.fit();
-        instance.center();
+    // Use double-rAF to wait for the browser to finish the fullscreen layout
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        panZoomInstances.forEach(function (instance, container) {
+          var svg = container.querySelector("svg");
+          if (svg) {
+            // Set explicit pixel dimensions so svg-pan-zoom computes correct transforms
+            // (svg-pan-zoom strips viewBox, so percentage/auto dimensions won't work)
+            svg.setAttribute("width", container.clientWidth);
+            svg.setAttribute("height", container.clientHeight);
+          }
+          instance.resize();
+          instance.fit();
+          instance.center();
+        });
       });
-    }, 200);
+    });
   });
 
   // Observe each .mermaid container for child SVG additions
