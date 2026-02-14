@@ -36,6 +36,11 @@ keep collected data in standard formats (TSV, JSON, Parquet),
 build hierarchical summaries for navigation,
 and let use-case-appropriate viewers (VisiData, Datasette, custom HTML) attach freely.
 
+**[Automation and Pipelines](automation-and-pipelines/)** --
+Triggering ingestion on external events, multi-step data transformation (ETL),
+human-and-AI-in-the-loop curation, branch-based workflow orchestration (BIDS-flux),
+observability dashboards, and idempotent processing over git/git-annex/DataLad.
+
 **[Domain Extensions](domain-extensions/)** --
 How the generic con/serve platform extends
 to domain-specific workflows like neuroimaging, genomics, or digital humanities,

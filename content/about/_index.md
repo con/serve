@@ -268,6 +268,45 @@ con/serve addresses both sides:
    any frontier that ever existed: from the binary to the source,
    from the figure to the raw data, from the summary to the original conversation.
 
+### Frontiers and Compressed Context
+
+There is a deep analogy between Frozen Frontiers
+and how AI systems manage their own memory.
+
+An LLM operating over a long conversation
+must eventually **compress its context** --
+summarizing earlier exchanges to fit within a finite window.
+The compressed context is a working surface:
+a curated, re-expressed subset of everything that came before,
+optimized for the task at hand.
+What lies behind the compression boundary is not gone --
+it exists in the full transcript --
+but it is no longer directly attended to.
+
+The vault operates the same way for every kind of consumer:
+
+| Consumer | Full record (vault) | Compressed context (working surface) |
+|---|---|---|
+| **AI agent** | All archived Slack threads, issues, transcripts | A system prompt + retrieved context window, summarized for the current task |
+| **Researcher** | Raw DICOMs, event logs, stimulus recordings | BIDS-converted, QC-passed analysis-ready dataset |
+| **Lab manager** | Hundreds of pipeline runs, QC reports, audit logs | Dashboard showing items needing attention |
+| **Collaborator** | Full institutional archive (private + public) | Published subset on OpenNeuro/DANDI |
+
+The frontier is always wider than the context.
+The vault holds everything that was preserved before the frontier sealed;
+any consumer sees only what is relevant to their current purpose,
+potentially re-expressed for optimal consumption by that specific agent.
+
+This is the **"serve"** in con/serve:
+not just to conserve artifacts against loss,
+but to serve them in the right form to the right consumer.
+The vault is the uncompressed record.
+Every working surface -- a BIDS dataset, a dashboard, an AI's context window,
+a published collection -- is a compressed context over it.
+And because the vault is version-controlled and content-addressed,
+the compression is always reversible:
+you can go back through any frontier to the raw material behind it.
+
 For more on Frozen Frontiers, see the
 [YODA & BIDS webinar slide](https://datasets.datalad.org/centerforopenneuroscience/talks/2026-repronim-YODA-BIDS-webinar.html#/6/23)
 and the corresponding
