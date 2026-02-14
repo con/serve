@@ -1,5 +1,5 @@
 // Site-level override of Congo's mermaid.js
-// Adds svg-pan-zoom integration after mermaid renders diagrams.
+// Adds svg-pan-zoom integration and fullscreen toggle after mermaid renders diagrams.
 
 function css(name) {
   return "rgb(" + getComputedStyle(document.documentElement).getPropertyValue(name) + ")";
@@ -32,14 +32,17 @@ mermaid.initialize({
   },
 });
 
-// After mermaid initializes and renders SVGs, apply svg-pan-zoom.
+// After mermaid initializes and renders SVGs, apply svg-pan-zoom and fullscreen button.
 // Mermaid renders asynchronously, so we use a MutationObserver to detect
 // when SVG elements appear inside .mermaid containers.
 (function () {
   var containers = document.querySelectorAll(".mermaid");
   if (!containers.length) return;
 
-  function applySvgPanZoom(svg) {
+  // Track pan-zoom instances per container so we can re-fit on fullscreen change
+  var panZoomInstances = new Map();
+
+  function applySvgPanZoom(svg, container) {
     // Skip if already processed
     if (svg.dataset.panZoomApplied) return;
     svg.dataset.panZoomApplied = "true";
@@ -52,7 +55,7 @@ mermaid.initialize({
     svg.style.width = "100%";
     svg.style.height = "100%";
 
-    svgPanZoom(svg, {
+    var instance = svgPanZoom(svg, {
       zoomEnabled: true,
       controlIconsEnabled: true,
       fit: true,
@@ -61,16 +64,50 @@ mermaid.initialize({
       maxZoom: 10,
       zoomScaleSensitivity: 0.3,
     });
+
+    panZoomInstances.set(container, instance);
   }
+
+  function addFullscreenButton(container) {
+    // Don't add twice
+    if (container.querySelector(".mermaid-fullscreen-btn")) return;
+
+    var btn = document.createElement("button");
+    btn.className = "mermaid-fullscreen-btn";
+    btn.title = "Toggle fullscreen";
+    btn.textContent = "\u26F6";
+    btn.addEventListener("click", function () {
+      if (!document.fullscreenElement) {
+        container.requestFullscreen().catch(function () {});
+      } else {
+        document.exitFullscreen();
+      }
+    });
+    container.appendChild(btn);
+  }
+
+  // Re-fit the diagram when entering or leaving fullscreen
+  document.addEventListener("fullscreenchange", function () {
+    // Small delay to let the browser finish the fullscreen transition
+    setTimeout(function () {
+      panZoomInstances.forEach(function (instance) {
+        instance.resize();
+        instance.fit();
+        instance.center();
+      });
+    }, 200);
+  });
 
   // Observe each .mermaid container for child SVG additions
   var observer = new MutationObserver(function (mutations) {
     mutations.forEach(function (mutation) {
       mutation.addedNodes.forEach(function (node) {
         if (node.nodeName && node.nodeName.toLowerCase() === "svg") {
+          var container = node.closest(".mermaid");
           // Small delay to let mermaid finish any post-render adjustments
           setTimeout(function () {
-            applySvgPanZoom(node);
+            applySvgPanZoom(node, container);
+            addFullscreenButton(container);
           }, 100);
         }
       });
@@ -82,7 +119,8 @@ mermaid.initialize({
     var existingSvg = container.querySelector("svg");
     if (existingSvg) {
       setTimeout(function () {
-        applySvgPanZoom(existingSvg);
+        applySvgPanZoom(existingSvg, container);
+        addFullscreenButton(container);
       }, 100);
     }
 
