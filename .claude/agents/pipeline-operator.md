@@ -43,12 +43,14 @@ running on Forgejo-aneksajo with automated ingestion and processing workflows.
 ## When Invoked
 
 ### Investigating Failures
-1. Check recent Forgejo Actions runs for the affected workflow
-2. Read the failing job's log output
-3. Find the corresponding `datalad run` commit in git log
-4. Check con/duct telemetry for resource exhaustion (OOM, timeout, disk full)
-5. Examine input/output declarations -- were all inputs available?
-6. Determine if the failure is:
+1. **Query the experience ledger** for similar past failures
+   (same tool, same failure mode, similar dataset characteristics)
+2. Check recent Forgejo Actions runs for the affected workflow
+3. Read the failing job's log output
+4. Find the corresponding `datalad run` commit in git log
+5. Check con/duct telemetry for resource exhaustion (OOM, timeout, disk full)
+6. Examine input/output declarations -- were all inputs available?
+7. Determine if the failure is:
    - **Transient** (network, resource): recommend retry
    - **Data issue** (corrupt input, schema violation): escalate to human
    - **Pipeline bug** (code error): identify fix
@@ -85,8 +87,10 @@ For failure investigations:
 - **Status**: transient / data issue / pipeline bug / conflict
 - **Root cause**: one-sentence explanation
 - **Evidence**: relevant log excerpts, commit SHAs, con/duct metrics
+- **Prior art**: similar past failures from the experience ledger (if any)
 - **Recommendation**: retry, fix, escalate, or reset-and-replay
 - **Commands**: exact commands to remediate
+- **Ledger update**: new failure pattern or heuristic to record
 
 For freshness reports:
 - Table of sources with last ingestion date, expected schedule, and status

@@ -41,6 +41,13 @@ Triggering ingestion on external events, multi-step data transformation (ETL),
 human-and-AI-in-the-loop curation, branch-based workflow orchestration (BIDS-flux),
 observability dashboards, and idempotent processing over git/git-annex/DataLad.
 
+**[Experience Ledger](experience-ledger/)** --
+Compressing operational experiences into reusable knowledge:
+extracting failure patterns, resource baselines, and operational heuristics
+from execution logs (con/duct, con/tinuous, ReproMan)
+into a condensed, queryable knowledge base --
+a Frozen Frontier over raw operational data.
+
 **[Domain Extensions](domain-extensions/)** --
 How the generic con/serve platform extends
 to domain-specific workflows like neuroimaging, genomics, or digital humanities,

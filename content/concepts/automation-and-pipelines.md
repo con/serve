@@ -374,6 +374,7 @@ The entire chain is re-executable via `datalad rerun`.
 
 ## See Also
 
+- [Experience Ledger]({{< ref "experience-ledger" >}}) -- compressing execution logs into reusable operational knowledge
 - [Ingestion Patterns]({{< ref "ingestion-patterns" >}}) -- how data enters the vault
 - [Conservation to External Resources]({{< ref "conservation-to-external" >}}) -- publishing and backup
 - [Vault Organization]({{< ref "vault-organization" >}}) -- directory layout for the vault

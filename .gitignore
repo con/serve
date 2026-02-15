@@ -8,3 +8,6 @@ archive/
 .wget-hsts
 # for now at least
 projects/
+.config/
+.local/
+.cache
