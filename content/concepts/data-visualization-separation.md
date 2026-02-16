@@ -118,7 +118,8 @@ The same `videos.tsv` or `sessions.tsv` can be opened in:
   naturally enables this kind of lightweight exploration --
   leading to use-case-specific customizations like
   [ABCD-visidata](https://github.com/ReproNim/ABCD-visidata)
-  for navigating the ABCD neuroimaging dataset.
+  for navigating the ABCD neuroimaging dataset, or otherwise a collection of
+  visidata setups at [con/visidata-demos](https://github.com/con/visidata-demos/).
 
 - **[Datasette](https://datasette.io/)** -- an "explore and publish" tool
   for SQLite databases. Load your TSVs into SQLite,
