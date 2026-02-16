@@ -164,6 +164,12 @@ and replace it freely when something better comes along.
 
 ## Relation to Other Concepts
 
+- **[Metadata Extraction and Dependencies]({{< ref "metadata-extraction" >}})** --
+  the extraction pipelines and dependency tracking
+  that keep the summary tables current as data evolves.
+  This page describes how summaries are presented;
+  that page describes how they are produced and updated.
+
 - **[Frozen Frontiers]({{< ref "/_index.md#frozen-frontiers" >}})** --
   each summarization level is a frozen frontier:
   a working surface for the next stage

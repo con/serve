@@ -279,74 +279,29 @@ before formalizing a new ingestion step
 rate limiting kicked in after 1000 requests;
 add backoff to the wrapper").
 
-## Dataset Characteristics as Input to the Ledger
+## Connecting to Data Knowledge
 
-Operational requirements -- how much memory to request,
-how many subjects to parallelize,
-how long a job can run before timing out --
-depend on the dataset at hand.
-A dataset with 16 subjects, each having 3 short BOLD runs,
-makes very different demands than one with 200 subjects
-and hour-long multi-echo acquisitions.
+The experience ledger records **operational knowledge** --
+what happened when we processed data on this system.
+But operational outcomes depend on **data characteristics**:
+a dataset with 200 subjects and multi-echo acquisitions
+demands very different resources than one with 16 subjects
+and short BOLD runs.
 
-To make informed decisions about resource allocation and job parameters,
-the vault needs **summary tables of dataset characteristics**
-extracted from the data itself.
-The [OpenNeuroStudies](https://github.com/OpenNeuroStudies) project
-demonstrates this pattern with per-dataset summary files like
-[`sourcedata+subjects.tsv`](https://github.com/OpenNeuroStudies/study-ds000001/blob/8a9d02a/sourcedata/sourcedata%2Bsubjects.tsv):
+The extraction of dataset characteristics --
+per-subject summary tables, file counts, sizes, durations --
+is covered in [Metadata Extraction and Dependencies]({{< ref "metadata-extraction" >}}).
+That is **data knowledge**: intrinsic properties of the data itself,
+independent of where or how it is processed.
 
-| source_id | subject_id | bold_num | bold_size | bold_duration_total | bold_voxels_total | t1w_num | t1w_size | datatypes |
-|-----------|-----------|----------|-----------|--------------------|--------------------|---------|----------|-----------|
-| ds000001 | sub-01 | 3 | 141871303 | 1800.0 | 405504 | 1 | 5663237 | anat,func |
-| ds000001 | sub-02 | 3 | 139465821 | 1800.0 | 405504 | 1 | 5487612 | anat,func |
-
-These summaries distill the operationally relevant properties of each subject:
-number of acquisitions, file sizes, scan durations, voxel counts, modalities present.
-The extraction should be formalized and automated --
-every dataset entering the vault should get a summary table
-generated as a `datalad run` step,
-so the characteristics are available before any processing begins.
-
-### From Characteristics to Strategies
-
-When the experience ledger correlates dataset characteristics
-with execution outcomes (from con/duct telemetry),
-it becomes possible to establish informed strategies:
-
-- **Resource limits**: "BOLD runs with >300 volumes
-  (identifiable from `bold_voxels_total`) need 64 GB nodes for fMRIPrep;
-  smaller runs fit in 32 GB."
-- **Parallelization**: "Subjects with >500 MB total BOLD size
-  should be processed one at a time per node;
-  smaller subjects can run 4-way parallel."
-- **Timeout thresholds**: "fMRIPrep wall time scales roughly linearly
-  with `bold_duration_total`; set timeout to 2x the predicted duration."
-- **Preemptive flagging**: "Datasets with mixed datatypes
-  (e.g., `anat,func,dwi,fmap`) have historically higher failure rates
-  in HeuDiConv conversion; route to manual review."
-
-Without these summaries,
-resource requests are guesswork or worst-case over-provisioning.
-With them, the ledger can match a new dataset's characteristics
-against past execution profiles
-and recommend parameters before the first job is submitted.
-
-### Generalizing Beyond Neuroimaging
-
-The same principle applies to any artifact type in the vault.
-For a Slack workspace: number of channels, messages per channel,
-attachment sizes, date range.
-For a YouTube channel: number of videos, total duration,
-caption availability, resolution.
-For a citations collection: number of references,
-proportion with full-text PDFs, average PDF size.
-
-Each artifact type has its own operationally relevant dimensions.
-Formalizing the extraction of these summaries
-into standardized tables (TSV, Parquet, or similar)
-is a prerequisite for an experience ledger
-that can reason about resource requirements and failure risk.
+The experience ledger *consumes* data knowledge
+to correlate failures with dataset properties:
+"fMRIPrep OOMs on datasets where `bold_voxels_total > 300`."
+But it does not produce it.
+The data extraction pipeline produces the summary tables;
+the experience ledger correlates them with execution outcomes
+to build informed strategies for resource allocation,
+parallelization, and preemptive failure avoidance.
 
 ## Open Questions
 
@@ -354,9 +309,6 @@ that can reason about resource requirements and failure risk.
   should the experience ledger use a formal extension
   of the [DataLad concepts vocabulary](https://concepts.datalad.org/),
   or is a lighter-weight format (YAML records, git-annex metadata) sufficient?
-- **Granularity** --
-  at what level do we compress?
-  Per-subject, per-dataset, per-tool, per-failure-mode?
 - **Automation boundary** --
   which ledger entries can be extracted automatically from logs
   vs. which require human annotation
@@ -364,14 +316,18 @@ that can reason about resource requirements and failure risk.
 - **Cross-vault knowledge** --
   can experience ledgers be shared across vault instances
   (e.g., our lab's fMRIPrep experience is useful to another lab running the same pipeline)?
-  What are the privacy implications?
-- **Relationship to DataLad Catalog** --
+  What are the privacy implications of sharing operational profiles?
+- **Relationship to DataLad Catalog and Registry** --
   the [DataLad Catalog](https://docs.datalad.org/projects/catalog/)
-  already provides metadata browsing;
-  could the experience ledger be surfaced through a similar interface?
+  provides metadata browsing,
+  and the [DataLad Registry](https://registry.datalad.org/)
+  already indexes 23,000+ datasets.
+  Could the experience ledger be surfaced through these existing interfaces?
 
 ## See Also
 
+- [Metadata Extraction and Dependencies]({{< ref "metadata-extraction" >}}) --
+  data knowledge extraction that the ledger correlates with operational outcomes
 - [Automation and Pipelines]({{< ref "automation-and-pipelines" >}}) --
   the execution stack that produces the raw material for the ledger
 - [Frozen Frontiers]({{< ref "about#frozen-frontiers" >}}) --

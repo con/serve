@@ -374,6 +374,7 @@ The entire chain is re-executable via `datalad rerun`.
 
 ## See Also
 
+- [Metadata Extraction and Dependencies]({{< ref "metadata-extraction" >}}) -- dependency tracking and incremental recomputation for data summaries and derivatives
 - [Experience Ledger]({{< ref "experience-ledger" >}}) -- compressing execution logs into reusable operational knowledge
 - [Ingestion Patterns]({{< ref "ingestion-patterns" >}}) -- how data enters the vault
 - [Conservation to External Resources]({{< ref "conservation-to-external" >}}) -- publishing and backup

@@ -41,12 +41,19 @@ Triggering ingestion on external events, multi-step data transformation (ETL),
 human-and-AI-in-the-loop curation, branch-based workflow orchestration (BIDS-flux),
 observability dashboards, and idempotent processing over git/git-annex/DataLad.
 
+**[Metadata Extraction and Dependencies](metadata-extraction/)** --
+Extracting data knowledge from vault datasets into hierarchical summary tables,
+with git-native dependency tracking for incremental recomputation.
+Covers per-record granularity (update one row when one subject changes),
+cascading dependencies, datalad-metalad as extraction engine,
+and the connection to derivative reprocessing.
+
 **[Experience Ledger](experience-ledger/)** --
 Compressing operational experiences into reusable knowledge:
-extracting failure patterns, resource baselines, and operational heuristics
-from execution logs (con/duct, con/tinuous, ReproMan)
-into a condensed, queryable knowledge base --
-a Frozen Frontier over raw operational data.
+failure patterns, resource baselines, and operational heuristics
+extracted from execution logs (con/duct, con/tinuous, ReproMan).
+Operational knowledge specific to the processing system,
+distinct from data knowledge about the datasets themselves.
 
 **[Domain Extensions](domain-extensions/)** --
 How the generic con/serve platform extends
