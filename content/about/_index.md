@@ -283,7 +283,8 @@ What lies behind the compression boundary is not gone --
 it exists in the full transcript --
 but it is no longer directly attended to.
 
-The vault operates the same way for every kind of consumer:
+Different consumers need different working surfaces --
+each tailored to their role, their decisions, and their level of detail:
 
 | Consumer | Full record (vault) | Compressed context (working surface) |
 |---|---|---|
@@ -303,6 +304,19 @@ but to serve them in the right form to the right consumer.
 The vault is the uncompressed record.
 Every working surface -- a BIDS dataset, a dashboard, an AI's context window,
 a published collection -- is a compressed context over it.
+
+Critically, these working surfaces are not just views --
+they are **redistributable datasets** in their own right.
+A BIDS-converted subset can be cloned by a collaborator,
+worked on independently, and later merged back
+into the vault via DataLad's tracking of clone lineage.
+A published collection on OpenNeuro is a working surface
+that others can `datalad clone`, extend with derivatives,
+and push results back upstream.
+The working surface is not a dead-end export;
+it is a live branch of the vault's version-controlled history,
+capable of round-tripping.
+
 And because the vault is version-controlled and content-addressed,
 the compression is always reversible:
 you can go back through any frontier to the raw material behind it.
