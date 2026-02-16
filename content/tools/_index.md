@@ -15,18 +15,18 @@ an AI readiness assessment, and links to upstream documentation.
 
 Every tool is classified along four axes:
 
-**Category** -- the type of artifact the tool handles:
-Communications, Media, Code Artifacts, Cloud Storage, Publications, Web, AI Sessions.
+**[Category](/categories/)** -- the type of artifact the tool handles:
+[Communications](/categories/communications/) | [Media](/categories/media/) | [Code Artifacts](/categories/code-artifacts/) | [Cloud Storage](/categories/cloud-storage/) | [Publications](/categories/publications/) | [Web](/categories/web/) | [AI Sessions](/categories/ai-sessions/).
 
-**Media type** -- the specific format or platform (e.g., `slack`, `youtube`, `github-issues`).
+**[Media type](/media_types/)** -- the specific format or platform (e.g., [slack](/media_types/slack/), [youtube](/media_types/youtube/), [github-issues](/media_types/github-issues/)).
 A tool may handle multiple media types.
 
 **[Integration level](/integrations/)** -- how deeply the tool integrates with the git-annex/DataLad stack:
-[`native-datalad`](/integrations/native-datalad/) | [`git-annex`](/integrations/git-annex/) | [`git-only`](/integrations/git-only/) | [`external`](/integrations/external/)
+[native-datalad](/integrations/native-datalad/) | [git-annex](/integrations/git-annex/) | [git-only](/integrations/git-only/) | [external](/integrations/external/)
 -- see [Integration Levels](/about/#integration-levels) for definitions.
 
 **[AI readiness](/ai_readiness/)** -- how consumable the archived output is for LLM-based workflows:
-[`ai-ready`](/ai_readiness/ai-ready/) | [`ai-partial`](/ai_readiness/ai-partial/) | [`ai-manual`](/ai_readiness/ai-manual/)
+[ai-ready](/ai_readiness/ai-ready/) | [ai-partial](/ai_readiness/ai-partial/) | [ai-manual](/ai_readiness/ai-manual/)
 -- see [AI Readiness Levels](/about/#ai-readiness-levels) for definitions.
 
 ## Sections
