@@ -44,6 +44,29 @@ HedgeDoc, and other services into a single reproducible
 "lab infrastructure" stack.
 One command, one box, everything a research group needs.
 
+## Visualization & Browsing
+
+**[PhotoPrism](photoprism/)** --
+AI-powered photo management with face recognition,
+automatic categorization, and map views.
+The heaviest option, best for large collections
+where AI-assisted organization adds value.
+
+**[Photoview](photoview/)** --
+Lightweight photo gallery that reads directly from the filesystem.
+Already deployed as a service in Lab-in-a-Box.
+Best for well-organized collections that need simple web browsing.
+
+**[copyparty](copyparty/)** --
+While primarily a file server, copyparty's built-in image gallery
+and grid-view thumbnails make it a zero-setup option
+for quick photo album browsing over git-annex working trees.
+
+These tools embody the
+[data-visualization separation]({{< ref "data-visualization-separation" >}}) principle:
+photos live in git-annex, and any of these frontends can be attached
+(or replaced) without touching the archived data.
+
 ## Design Principles
 
 The infrastructure stack follows the same principles as the data it manages:

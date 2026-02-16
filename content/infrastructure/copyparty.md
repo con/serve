@@ -69,8 +69,34 @@ The WebDAV support is particularly useful: clients can mount the copyparty serve
 
 copyparty's file listings and search results are accessible via its HTTP API. The web UI exposes structured metadata (filenames, sizes, dates, ID3 tags). The actual AI readiness depends on the uploaded content -- text files and structured data are directly consumable, while binary media requires domain-specific processing.
 
+## Photo Album Browsing
+
+copyparty's rich web UI includes a built-in image gallery with grid-view thumbnails,
+making it a surprisingly capable tool for **browsing photo collections**
+without installing a dedicated photo management application.
+When pointed at a git-annex working tree containing photos,
+copyparty serves thumbnails, supports keyboard navigation,
+and handles common image formats out of the box.
+
+For personal photo archives (e.g., imported from
+[Google Takeout]({{< ref "google-takeout" >}})),
+copyparty can serve as a zero-setup browsing frontend:
+start the single-file server, point it at the photo directory,
+and navigate albums in the browser.
+This is useful for quick review and triage before committing
+to a heavier solution like [PhotoPrism]({{< ref "photoprism" >}})
+or [Photoview]({{< ref "photoview" >}}).
+
+```bash
+# Browse a photo collection with zero setup
+python3 copyparty-sfx.py -a photos::r ~/vault/personal/photos
+# Open http://localhost:3923/photos/ in browser
+```
+
 ## See Also
 
 - [Ingestion Patterns]({{< ref "ingestion-patterns" >}}) -- patterns for bringing external files into git-annex
 - [Lab-in-a-Box]({{< ref "lab-in-a-box" >}}) -- the pyinfra-based lab deployment that could include copyparty as a service
 - [rclone]({{< ref "rclone" >}}) -- can bridge between copyparty's WebDAV and git-annex special remotes
+- [PhotoPrism]({{< ref "photoprism" >}}) -- full-featured photo management with AI classification
+- [Photoview]({{< ref "photoview" >}}) -- lightweight photo gallery for structured collections

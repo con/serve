@@ -8,7 +8,7 @@ title = "con/serve"
 [params]
   dateFormat = "2 January 2006"
 
-  mainSections = ["tools", "infrastructure", "concepts"]
+  mainSections = ["tools", "infrastructure", "concepts", "user-stories"]
   description = "Conserve and serve digital research artifacts — a knowledge base for archiving everything into git-annex and DataLad repositories."
 
 [params.author]

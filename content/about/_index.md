@@ -69,6 +69,11 @@ flowchart LR
             citations["Citations<br>(citations-collector)"]
             pdfs["PDFs<br>(Unpaywall)"]
         end
+
+        subgraph personal["Personal Data"]
+            takeout["Google Takeout<br>(full account export)"]
+            photos_in["Photos<br>(camera, phone)"]
+        end
     end
 
     %% CENTER HUB
@@ -88,6 +93,7 @@ flowchart LR
         subgraph surfaces["Working Surfaces"]
             hedgedoc_int["HedgeDoc<br>(collaborative docs)"]
             hugo_int["Hugo website<br>(con/serve)"]
+            photoprism_int["PhotoPrism / Photoview<br>(photo gallery)"]
         end
 
         subgraph ai_assist["AI Assistance"]
@@ -141,6 +147,7 @@ flowchart LR
     neuro -->|acquire| HUB
     ai -->|capture| HUB
     pubs -->|collect| HUB
+    personal -->|ingest| HUB
 
     %% CONNECTIONS: Hub -> Outbound
     HUB -->|"special<br>remote"| cloud_out
@@ -161,10 +168,10 @@ flowchart LR
     classDef bidir fill:#6b46c1,stroke:#553c9a,color:#fff,stroke-width:2px,stroke-dasharray: 5 5
     classDef harmonizeNode fill:#e07b39,stroke:#c05621,color:#fff,stroke-width:2px
 
-    class slack,telegram,matrix,mattermost,email,youtube,zoom,podcasts,issues,discussions,wikis,dicom,stimuli,events,environ,claude,cursor,entireio,citations,pdfs inbound
+    class slack,telegram,matrix,mattermost,email,youtube,zoom,podcasts,issues,discussions,wikis,dicom,stimuli,events,environ,claude,cursor,entireio,citations,pdfs,takeout,photos_in inbound
     class ga,dl,forgejo,principles hub
     class bids,nwb,yoda_layout harmonizeNode
-    class hedgedoc_int,hugo_int harmonizeNode
+    class hedgedoc_int,hugo_int,photoprism_int harmonizeNode
     class llm,skills harmonizeNode
     class gdrive_out,s3_out,dropbox_out,openneuro,dandi,osf,ember,dlhub,inst_wiki,ghpages,zotero outbound
     class rclone bidir
@@ -179,6 +186,7 @@ flowchart LR
     style neuro fill:#bee3f8,stroke:#2b6cb0,color:#2c5282
     style ai fill:#bee3f8,stroke:#2b6cb0,color:#2c5282
     style pubs fill:#bee3f8,stroke:#2b6cb0,color:#2c5282
+    style personal fill:#bee3f8,stroke:#2b6cb0,color:#2c5282
     style harmonize fill:#fbd38d,stroke:#e07b39,stroke-width:2px,color:#744210
     style surfaces fill:#fbd38d,stroke:#e07b39,stroke-width:2px,color:#744210
     style ai_assist fill:#fbd38d,stroke:#e07b39,stroke-width:2px,color:#744210

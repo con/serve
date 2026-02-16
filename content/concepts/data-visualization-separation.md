@@ -137,6 +137,18 @@ The same `videos.tsv` or `sessions.tsv` can be opened in:
 - **A custom Svelte/HTML frontend** -- for public-facing or project-specific views
   (as annextube and mykrok demonstrate).
 
+- **[PhotoPrism]({{< ref "photoprism" >}}) / [Photoview]({{< ref "photoview" >}})** --
+  self-hosted photo galleries that read from the filesystem.
+  Point them at a git-annex working tree of photos
+  and get a browsable web interface with thumbnails, maps,
+  and (in PhotoPrism's case) AI-powered face recognition and classification.
+  The photos are the durable asset in git-annex;
+  the gallery is a replaceable visualization layer.
+
+- **[copyparty]({{< ref "copyparty" >}})** -- a single-file Python file server
+  whose built-in image gallery mode provides zero-setup photo album browsing
+  over any directory tree, including git-annex working trees.
+
 None of these tools need to understand how the data was collected.
 They operate on the summarized, structured output --
 the frozen frontier that the ingestion pipeline established.
