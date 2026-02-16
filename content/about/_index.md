@@ -222,24 +222,33 @@ The YODA nesting model composes them into a coherent whole.
 
 ## STAMPED Principles
 
-**STAMPED** provides the guiding framework:
+**[STAMPED](https://github.com/myyoda/principles-paper/blob/main/proposals/stamped-acronym.md)**
+provides the guiding framework,
+building on YODA philosophy:
 
 | Letter | Principle | Meaning |
 |---|---|---|
-| **S** | Standardized | Use community conventions and formats |
-| **T** | Tracked | Version control everything with git/git-annex |
-| **A** | Accessible | Make artifacts findable and retrievable |
-| **M** | Modular | Compose datasets from reusable components |
-| **P** | Portable | Avoid vendor lock-in; own your bits |
-| **E** | Every artifact | Not just code and data -- *everything* |
-| **D** | Distributed | Replicate across locations for resilience |
+| **S** | Self-contained | Research objects are complete retrieval units -- no external lookups required |
+| **T** | Tracked | All assets under version control using content-addressed systems (git/git-annex) |
+| **A** | Actionable | Cross-cutting quality: every dimension is operationally useful, not merely documented |
+| **M** | Modular | Independently versioned, composable components |
+| **P** | Provenance-recorded | Modifications annotated in version history; code-driven provenance is programmatic |
+| **E** | Ephemeral | Computing occurs in throwaway environments, validating containment and portability |
+| **D** | Deployable | Explicitly specified, machine-reproducible environments that transfer across systems |
 
-con/serve is the practical realization of the **E** principle:
-a catalog of tools and workflows for archiving
-every type of digital artifact a research group produces or depends on.
+Self-containment (**S**) is the foundation:
+a dataset must carry everything needed to understand and use it.
+The four core dimensions (**T**, **M**, **P**, **D**) are structural principles.
+Ephemerality (**E**) is a validation discipline --
+if your analysis runs in a throwaway environment,
+it proves the other principles hold.
+Actionability (**A**) cuts across all dimensions:
+the goal is not just to document, but to make every property machine-operable.
 
-The **S** principle -- Standardized -- is realized through
-a layered approach to standards:
+For aspects of **standardization and interoperability**,
+con/serve draws on [FAIR principles](https://www.go-fair.org/fair-principles/)
+(Findable, Accessible, Interoperable, Reusable)
+and a layered approach to [standards](/standards/):
 domain standards ([BIDS](/standards/bids/), [NWB](/standards/nwb/), [HED](/standards/hed/))
 for data organization,
 file formats ([JSON](/standards/json/), [YAML](/standards/yaml/), [TSV](/standards/tsv/))

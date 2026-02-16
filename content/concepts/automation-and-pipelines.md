@@ -222,7 +222,7 @@ for a walkthrough of this architecture.
 Heavy processing steps -- fMRIPrep on hundreds of subjects,
 MRIQC across an entire study, video transcoding, LLM-based curation at scale --
 should not be pinned to the machine hosting the vault.
-The STAMPED principles of **portability** and **distribution**
+The STAMPED principles of **deployability** and **ephemerality**
 apply to compute as much as to data:
 a dataset should be shippable to wherever the compute lives,
 processed there, and the results pulled back,
