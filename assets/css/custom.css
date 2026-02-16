@@ -65,6 +65,32 @@
   background: #1a202c;
 }
 
+/* ── Tool metadata box ─────────────────────────────────────────
+   Replaces inline styles from layouts/partials/tool-meta.html
+   ────────────────────────────────────────────────────────────── */
+
+.tool-meta {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  border: 1px solid rgba(128, 128, 128, 0.2);
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.tool-meta-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 2rem;
+}
+.tool-meta-examples {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(128, 128, 128, 0.15);
+}
+.tool-meta-examples a {
+  margin-left: 0.5rem;
+}
+
 /* ── Taxonomy tag color-coding ─────────────────────────────────
    Colors align with the architecture diagram:
    blue=categories (inbound sources), amber=media types (hub),
