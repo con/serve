@@ -44,6 +44,16 @@ HedgeDoc, and other services into a single reproducible
 "lab infrastructure" stack.
 One command, one box, everything a research group needs.
 
+## Annotation
+
+**[Annotation Garden](annotation-garden/)** --
+Open infrastructure for collaborative annotation of neuroscience stimuli.
+Uses git branches as stackable annotation layers,
+BIDS/HED standards for interoperability,
+and AI-accelerated annotation generation with human refinement.
+Particularly relevant for [ReproStim](https://github.com/ReproNim/reprostim)-captured
+audio/video stimuli, and generalizable to any experiment with media needing annotation.
+
 ## Visualization & Browsing
 
 **[PhotoPrism](photoprism/)** --

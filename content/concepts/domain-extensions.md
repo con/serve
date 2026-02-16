@@ -52,7 +52,7 @@ Neuroimaging is the most developed domain extension in the con/serve ecosystem, 
 | Source | Tool | Output |
 |--------|------|--------|
 | MRI scanner (DICOM) | Direct acquisition / PACS export | Raw DICOM files |
-| Stimuli presentation | [ReproStim](https://github.com/ReproNim/reprostim) | Stimulus logs, screen recordings |
+| Stimuli presentation | [ReproStim](https://github.com/ReproNim/reprostim) | Stimulus logs, screen recordings; annotated via [Annotation Garden]({{< ref "annotation-garden" >}}) |
 | Behavioral events | CurDes BIRCH | Event timing files |
 | Environmental sensors | Custom loggers | Temperature, humidity, noise logs |
 
@@ -62,7 +62,7 @@ Neuroimaging is the most developed domain extension in the con/serve ecosystem, 
 |------|-----|------|
 | DICOM | BIDS | [HeuDiConv](https://github.com/nipy/heudiconv) with [ReproIn](https://github.com/repronim/reproin) naming |
 | Raw physiology | BIDS physio | Custom scripts |
-| Stimulus logs | BIDS events | ReproStim exporters |
+| Stimulus logs | BIDS events | ReproStim exporters, [Annotation Garden]({{< ref "annotation-garden" >}}) HEDit |
 
 The [BIDS](https://bids-specification.readthedocs.io/) (Brain Imaging Data Structure) standard defines directory layouts, naming conventions, and metadata files for neuroimaging datasets. HeuDiConv and ReproIn automate the conversion from scanner-native DICOM to BIDS-compliant DataLad datasets.
 

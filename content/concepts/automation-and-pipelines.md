@@ -44,6 +44,7 @@ Examples:
   → [extract QR codes for timing synchronization](https://github.com/ReproNim/reprostim/issues/14)
   → slice video to match DICOM acquisition timing
   → align with behavioral event logs
+  → annotate with HED tags via [Annotation Garden]({{< ref "annotation-garden" >}})
   → package as BIDS (BEP044 Stimuli, BEP047 Behavior)
 - **MRI processing**: archive raw DICOMs
   → HeuDiConv/ReproIn BIDS conversion
