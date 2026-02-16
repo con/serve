@@ -328,6 +328,101 @@ data summaries feed dashboards and query tools;
 execution telemetry feeds the experience ledger
 and its failure pattern analysis.
 
+## Prior Art: Nipoppy Trackers and Neurobagel Digest
+
+[Nipoppy](https://nipoppy.readthedocs.io/)
+and [Neurobagel](https://neurobagel.org/)
+have already built concrete implementations
+of processing status tracking and metadata dashboarding --
+without DataLad/git-annex underneath,
+but with reusable components.
+
+### Nipoppy's Processing Trackers
+
+Nipoppy maintains two tracker TSV files:
+
+**`curation_status.tsv`** -- tracks BIDSification progress per subject/session:
+
+| participant_id | session_id | in_pre_reorg | in_post_reorg | in_bids |
+|---|---|---|---|---|
+| sub-01 | ses-01 | true | true | true |
+| sub-02 | ses-01 | true | true | false |
+
+**`processing_status.tsv`** -- tracks pipeline completion per subject/session:
+
+| participant_id | session_id | pipeline_name | pipeline_version | pipeline_step | status |
+|---|---|---|---|---|---|
+| sub-01 | ses-01 | fmriprep | 24.1.1 | participant | SUCCESS |
+| sub-01 | ses-01 | mriqc | 24.2.0 | participant | FAIL |
+
+Status is determined by **file-existence checks**:
+each pipeline declares expected output paths
+(with glob patterns and `[[NIPOPPY_PARTICIPANT_ID]]` / `[[NIPOPPY_SESSION_ID]]` templates)
+in a `tracker.json` configuration.
+The tracker runs independently after pipeline execution,
+checking whether all declared outputs exist.
+
+This is exactly the "summary table of processing state"
+that the vault needs --
+and the file-existence approach is simple, idempotent,
+and works with any pipeline.
+
+### Neurobagel Digest
+
+[Neurobagel Digest](https://github.com/neurobagel/digest)
+consumes Nipoppy's `processing_status.tsv` files
+and renders them as interactive dashboards (Dash/Plotly)
+for exploring per-subject pipeline availability.
+The digest schema extends the tracker with timing columns
+(`pipeline_starttime`, `pipeline_endtime`)
+and supports both imaging and phenotypic digests.
+
+The broader Neurobagel ecosystem adds:
+- **[bagel-cli](https://github.com/neurobagel/bagel-cli)** --
+  extracts subject-level metadata from BIDS datasets + annotated phenotypic TSVs,
+  producing JSON-LD for a semantic graph database (SPARQL-queryable)
+- **[annotation-tool](https://github.com/neurobagel/annotation_tool)** --
+  web UI for mapping phenotypic columns to controlled vocabularies
+  (SNOMED CT, NCIT, NIDM)
+- **[federation-api](https://github.com/neurobagel/federation-api)** --
+  cross-site query across distributed Neurobagel nodes
+
+### Reuse and Integration
+
+For the vault, the relevant components are:
+
+**Directly reusable:**
+- Nipoppy's tracker pattern (file-existence status determination)
+  generalizes to any pipeline and any artifact type.
+  The same approach works for annextube caption extraction,
+  Slack export completeness, or any `datalad run`-wrapped step.
+- The `processing_status.tsv` schema
+  is a natural output format for vault pipeline status.
+- Digest's dashboarding of processing status TSVs.
+
+**Interoperability gap:**
+- Nipoppy assumes traditional filesystem storage,
+  not git-annex content-addressed storage.
+  File-existence checks need adaptation for annexed files
+  (which appear as symlinks; content may or may not be locally present).
+- Nipoppy's `manifest.tsv` (ground-truth participant list)
+  overlaps with BIDS `participants.tsv` --
+  in a DataLad-backed vault, git history
+  already provides the ground truth for what exists.
+- Neurobagel's graph database (RDF/SPARQL) is a separate infrastructure component;
+  the vault's approach leans toward summary tables queryable
+  by lightweight tools (DuckDB, VisiData)
+  rather than requiring a graph store.
+
+**Integration path:**
+the vault should be able to produce Nipoppy-compatible tracker outputs
+from its own processing records (`datalad run` provenance + file existence),
+so that Neurobagel digest and bagel-cli can consume them
+without requiring Nipoppy's own orchestration layer.
+Conversely, datasets organized by Nipoppy
+can be ingested into the vault
+with their tracker outputs preserved as metadata.
+
 ## Relation to Derivatives Recomputation
 
 The dependency tracking mechanism for metadata extraction
@@ -400,3 +495,7 @@ and *at what granularity*.
   metalad extractors running at scale
 - [DataLad concepts vocabulary](https://concepts.datalad.org/) --
   the metadata schema for alignment
+- [Nipoppy](https://nipoppy.readthedocs.io/) --
+  study lifecycle framework with processing trackers
+- [Neurobagel Digest](https://github.com/neurobagel/digest) --
+  interactive dashboard for processing status TSVs

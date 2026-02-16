@@ -144,6 +144,20 @@ A BIDS dataset is also a *project*:
 The [EMBER study template](https://github.com/emberarchive/study-template)
 makes this explicit: `code/`, `derivatives/`, `docs/`, `logs/`, `scratch/`, `sourcedata/raw/`.
 
+**[Nipoppy](https://nipoppy.readthedocs.io/)** extends BIDS
+with a full study lifecycle layout:
+`sourcedata/imaging/{pre_reorg,post_reorg}/` for DICOMs before and after reorganization,
+`bids/` for converted data, `derivatives/<pipeline>/<version>/output/` for processing results,
+`tabular/` for phenotypic data, `containers/` for Apptainer images,
+`pipelines/` for per-stage configs, and `manifest.tsv` as the ground-truth participant registry.
+It also maintains **processing status trackers** --
+`curation_status.tsv` and `processing_status.tsv` --
+that record per-subject/per-session pipeline completion
+(see [Metadata Extraction]({{< ref "metadata-extraction#prior-art-nipoppy-trackers-and-neurobagel-digest" >}})).
+Nipoppy does not use DataLad/git-annex underneath,
+but its layout conventions and tracker outputs are
+complementary components worth integrating.
+
 These principles -- entity-labeled paths, metadata inheritance,
 raw/derivative separation -- apply to *any* structured collection,
 not just brain scans.
