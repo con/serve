@@ -295,19 +295,13 @@ limited cross-repository orchestration.
 
 ### General-Purpose Orchestrators
 
-Tools from the data engineering world
-that could serve as an outer orchestration layer
-(wrapping each task as a `datalad run` call):
-
-| Tool | Key Feature | Fit for Vault |
-|------|-------------|---------------|
-| [Dagster](https://dagster.io/) | Asset-oriented, built-in observability UI, GitOps-friendly | Strong -- asset model maps to DataLad datasets; UI provides the missing dashboard |
-| [Prefect](https://www.prefect.io/) | Python-native, event-driven, retries/caching | Good -- flexible triggers, but less asset-oriented |
-| [Apache Airflow](https://airflow.apache.org/) | Mature DAG scheduler, large ecosystem | Heavy -- designed for data warehouses, may be over-complex |
-| [Kestra](https://kestra.io/) | Declarative YAML workflows, event-driven, built-in UI | Interesting -- YAML workflows parallel Forgejo Actions syntax |
-
-The key integration point:
-every orchestrator task wraps a `datalad run` call,
+For workflows that outgrow Forgejo Actions
+(complex DAGs, cross-repository dependencies, scheduling with retries),
+general-purpose orchestrators from the data engineering world --
+[Dagster](https://dagster.io/), [Prefect](https://www.prefect.io/),
+[Kestra](https://kestra.io/), [Apache Airflow](https://airflow.apache.org/) --
+could serve as an outer layer.
+The key constraint: every orchestrator task must wrap a `datalad run` call,
 so provenance is captured regardless of which scheduler triggers it,
 and every task can optionally offload to remote compute
 via the clone-execute-push pattern.
@@ -315,21 +309,17 @@ via the clone-execute-push pattern.
 ## Observability and Dashboarding
 
 Operators need to see at a glance:
-- Which ingestion sources are up to date and which are stale
-- Which pipeline steps have succeeded, failed, or are awaiting human review
-- Which items have unresolved QC issues or merge conflicts
-- The overall health of the vault (storage usage, annex content distribution, broken links)
-
-Options for building this:
-- **Forgejo Actions UI** -- basic per-workflow run status
-- **Dagster UI** -- asset lineage, run history, sensor status
-  (if Dagster is adopted as orchestrator)
-- **Custom dashboard** -- a lightweight web app
-  (Hugo page, Datasette, or Grafana)
-  querying git log, `git annex info`, and CI status APIs
-- **[con/tinuous]({{< ref "tools/code-artifacts/tinuous" >}})** --
-  could archive CI logs from Forgejo into the vault itself,
-  making operational history a first-class archived artifact
+which ingestion sources are up to date and which are stale,
+which pipeline steps have succeeded or failed or are awaiting human review,
+and the overall health of the vault
+(storage usage, annex content distribution, broken links).
+[con/tinuous]({{< ref "tools/code-artifacts/tinuous" >}})
+can archive CI logs from Forgejo into the vault itself,
+making operational history a first-class archived artifact.
+[Neurobagel Digest](https://github.com/neurobagel/digest)
+demonstrates interactive dashboarding of processing status TSVs --
+a pattern directly applicable here
+(see [Metadata Extraction]({{< ref "metadata-extraction#prior-art-nipoppy-trackers-and-neurobagel-digest" >}})).
 
 ## Concrete Pipeline: annextube Caption Curation
 

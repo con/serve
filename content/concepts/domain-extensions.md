@@ -126,5 +126,6 @@ The result is a set of documentation, scripts, and configurations that sit along
 
 ## See Also
 
+- [Automation and Pipelines]({{< ref "automation-and-pipelines" >}}) -- orchestration and execution of conversion pipelines
 - [Ingestion Patterns]({{< ref "ingestion-patterns" >}}) -- generic ingestion strategies used by domain extensions
 - [Conservation to External Resources]({{< ref "conservation-to-external" >}}) -- outbound distribution including domain archives

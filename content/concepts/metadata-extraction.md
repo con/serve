@@ -37,32 +37,12 @@ that keeps the summaries current.
 
 ### Existing Examples
 
-**annextube** builds a three-tier summary pyramid:
+**[annextube]({{< ref "data-visualization-separation#annextube" >}})** builds a three-tier summary pyramid:
+`metadata.json` (per-video) → `videos.tsv` (per-channel) → `channels.tsv` (all channels).
+Each level is distilled from the one below.
 
-```
-archive/
-  channels.tsv                     # all channels at a glance
-  {channel}/
-    channel.json                   # per-channel stats
-    videos/
-      videos.tsv                   # all videos in this channel
-      {year}/{month}/{video_id}/
-        metadata.json              # full detail for one video
-```
-
-Each level is distilled from the one below:
-`metadata.json` → `videos.tsv` → `channels.tsv`.
-
-**mykrok** does the same with hive-partitioned paths:
-
-```
-data/
-  athletes.tsv                     # all athletes
-  athl=alice/
-    sessions.tsv                   # all sessions for this athlete
-    ses=2024-03-15T08-30/
-      info.json                    # per-session detail
-```
+**[mykrok]({{< ref "vault-organization#hive-partitioning" >}})** does the same with hive-partitioned paths:
+`info.json` (per-session) → `sessions.tsv` (per-athlete) → `athletes.tsv` (all athletes).
 
 **BIDS** applies the pattern to neuroimaging:
 common sidecar metadata (e.g., `task-rest_bold.json`)
@@ -235,74 +215,38 @@ What's missing is the **summarization step**
 that compacts per-file metadata into per-subject/per-record rows
 and exports them as tabular files.
 
-### What Needs Development
+### Gaps in Existing Tooling
 
-**1. Per-record summary extractors.**
-The existing `bids_dataset` extractor captures which entities exist
-but does not compute per-subject operational profiles
-(file counts by modality, total sizes, durations, voxel counts).
-A new extractor (or enhancement of the existing one)
-would walk the dataset layout
-and produce the per-record summaries
-that `sourcedata+subjects.tsv` demonstrates.
+The metalad framework is extensible --
+new extractors can be Python classes or external scripts,
+`meta-conduct` supports multi-stage pipelines,
+and storage in git means results are versioned alongside the data.
+But several gaps remain between what metalad provides today
+and what the vault's extraction pattern requires:
 
-The same pattern for other artifact types:
-per-channel summaries for YouTube archives,
-per-workspace summaries for Slack exports,
-per-collection summaries for citations.
-Each is implementable as a standalone script
-invoked via metalad's `external_dataset` mechanism.
-
-**2. Tabular export.**
-Metalad stores metadata as JSON-LD,
-which is semantically rich
-but not directly usable as the TSV/Parquet summary tables
-that operators, dashboards, and query tools need.
-A tabular export step --
-either a `meta-conduct` processor
-or a `meta-dump --format=tsv` output mode --
-would flatten extracted metadata
-into the columnar format needed for consumption.
-
-**3. Incremental extraction support.**
-Metalad currently extracts against a full dataset or file.
-For the row-level dependency tracking described above,
-the extraction needs to accept a scope
-(e.g., "only re-extract for paths matching `sub-01/ses-02/*`")
-and merge results into existing summary tables
-rather than regenerating from scratch.
-
-**4. Aggregation to vault level.**
-Metalad's `meta-aggregate` consolidates metadata
-from subdatasets upward through the superdataset hierarchy.
-This maps to the cascading dependency pattern:
-per-subject summaries aggregate to per-dataset profiles,
-which aggregate to a vault-level overview.
-The aggregation path needs to support
-the same incremental update logic --
-when one subdataset's metadata changes,
-only that subdataset's contribution to the parent needs updating.
-
-### Alignment with metalad
-
-What fits well:
-- The extractor plugin model is extensible --
-  new extractors inherit from `MetadataExtractor`
-  or run as external scripts
-- `meta-conduct` supports multi-stage pipelines
-  (extract → transform → store)
-- Storage in git means extraction results
-  are versioned alongside the data
-- JSON-LD output with PROV-DM vocabulary
-  is compatible with the [DataLad concepts vocabulary](https://concepts.datalad.org/)
-
-What needs work:
-- Incremental/scoped extraction (row-level granularity)
-- Tabular export path (JSON-LD → TSV/Parquet)
-- Integration with git-based dependency detection
-  (using `git diff` to scope what needs re-extraction)
-- Testing at vault scale
-  (hundreds of subdatasets, heterogeneous artifact types)
+- **Per-record summarization** --
+  existing extractors capture per-file metadata
+  (NIfTI headers, DICOM tags, file sizes)
+  and dataset-level presence inventories (which entities exist),
+  but do not compute per-subject/per-record operational profiles
+  like `sourcedata+subjects.tsv`.
+  The summarization step -- compacting per-file metadata
+  into per-record rows -- is missing.
+- **Tabular output** --
+  metalad stores metadata as JSON-LD,
+  which is semantically rich but not directly consumable
+  as the TSV/Parquet summary tables
+  that operators, dashboards, and query tools need.
+- **Incremental/scoped extraction** --
+  metalad currently extracts against a full dataset or file.
+  The row-level dependency tracking described above
+  requires scoping extraction to changed paths
+  and merging results into existing summaries.
+- **Aggregation granularity** --
+  `meta-aggregate` consolidates subdataset metadata upward,
+  but the same incremental update logic is needed:
+  when one subdataset changes,
+  only its contribution to the parent should be refreshed.
 
 ### Execution Telemetry and the Experience Ledger
 

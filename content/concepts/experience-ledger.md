@@ -192,44 +192,18 @@ Each activity connects to entities through qualified relationships:
 `Derivation` (output entity derived from input entity),
 `Revision` (new version of an existing entity).
 
-The experience ledger extends this provenance model
+The experience ledger could extend this provenance model
 with execution-specific attributes:
-
-```yaml
-# Extending DataLad concepts for execution tracking
-ExecutionActivity:
-  is_a: ActivityMixin
-  slots:
-    - command           # the datalad-run-recorded command
-    - exit_code
-    - started_at
-    - ended_at
-    - resource_usage    # -> ResourceTelemetry (from con/duct)
-    - compute_context   # -> ComputeResource (local, HPC, cloud)
-    - failure_mode      # success | oom | timeout | disk_full | data_error | config_error
-    - resolution        # what fixed it, if it failed
-
-ResourceTelemetry:
-  is_a: Thing
-  slots:
-    - peak_rss_mb
-    - avg_cpu_percent
-    - wall_time_seconds
-    - disk_io_bytes
-    - captured_by       # con/duct version, configuration
-
-ComputeResource:
-  is_a: Thing
-  slots:
-    - resource_type     # local | hpc_slurm | hpc_condor | cloud_aws
-    - hostname
-    - managed_by        # ReproMan resource or Forgejo Actions runner
-```
-
-This is not a formal proposal for extending the DataLad concepts schema --
-it is a sketch of how execution experiences could be modeled
-using the same vocabulary and patterns,
-so that the ledger's metadata is interoperable
+the command recorded by `datalad run`, exit codes,
+resource telemetry from con/duct (peak RSS, CPU, wall time),
+compute context (local, HPC cluster, cloud instance),
+failure mode classification (OOM, timeout, data error),
+and resolution notes.
+Each execution would be a PROV Activity
+with qualified links to the dataset entities it consumed and produced,
+the agent (human, AI, or automated pipeline) that triggered it,
+and the resource telemetry that characterized it --
+keeping the ledger's metadata interoperable
 with the broader DataLad metadata ecosystem.
 
 ## The Ledger as Frozen Frontier
@@ -254,9 +228,9 @@ to the original log line that explains the anomaly.
 
 ## Agents and the Ledger
 
-The **pipeline-operator** agent
-(defined in `.claude/agents/pipeline-operator.md`)
-is the primary consumer of the experience ledger.
+An AI agent specialized in pipeline operations --
+a "pipeline-operator" --
+would be the primary consumer of the experience ledger.
 When investigating a failure, it should:
 
 1. Query the ledger for similar past failures

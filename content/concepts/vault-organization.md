@@ -255,6 +255,7 @@ From this survey, several principles emerge for the vault layout:
 
 ## See Also
 
+- [Data-Visualization Separation]({{< ref "data-visualization-separation" >}}) -- how the directory layout enables hierarchical summarization and use-case-appropriate tooling
 - [Ingestion Patterns]({{< ref "ingestion-patterns" >}}) -- how data enters the vault
 - [Conservation to External Resources]({{< ref "conservation-to-external" >}}) -- how data leaves the vault
 - [Domain Extensions]({{< ref "domain-extensions" >}}) -- domain-specific internal structures within subdatasets
