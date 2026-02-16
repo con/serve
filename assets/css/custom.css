@@ -64,3 +64,91 @@
 .dark .mermaid:-webkit-full-screen {
   background: #1a202c;
 }
+
+/* ── Taxonomy tag color-coding ─────────────────────────────────
+   Colors align with the architecture diagram:
+   blue=categories (inbound sources), amber=media types (hub),
+   green=integrations (outbound), purple=AI readiness.
+   Tags stay neutral.  Each rule targets the taxonomy link by
+   its href prefix so we don't need to touch the theme.
+   ────────────────────────────────────────────────────────────── */
+
+/* Categories — blue */
+a[href*="/categories/"].rounded-md {
+  border-color: #2b6cb0;
+  color: #2b6cb0;
+}
+a[href*="/categories/"].rounded-md:hover {
+  background-color: rgba(43, 108, 176, 0.1);
+  border-color: #2c5282;
+  color: #2c5282;
+}
+.dark a[href*="/categories/"].rounded-md {
+  border-color: #63b3ed;
+  color: #63b3ed;
+}
+.dark a[href*="/categories/"].rounded-md:hover {
+  background-color: rgba(99, 179, 237, 0.15);
+  border-color: #90cdf4;
+  color: #90cdf4;
+}
+
+/* Media types — amber */
+a[href*="/media_types/"].rounded-md {
+  border-color: #d69e2e;
+  color: #975a16;
+}
+a[href*="/media_types/"].rounded-md:hover {
+  background-color: rgba(214, 158, 46, 0.1);
+  border-color: #b7791f;
+  color: #744210;
+}
+.dark a[href*="/media_types/"].rounded-md {
+  border-color: #ecc94b;
+  color: #ecc94b;
+}
+.dark a[href*="/media_types/"].rounded-md:hover {
+  background-color: rgba(236, 201, 75, 0.15);
+  border-color: #f6e05e;
+  color: #f6e05e;
+}
+
+/* Integration level — green */
+a[href*="/integrations/"].rounded-md {
+  border-color: #2f855a;
+  color: #2f855a;
+}
+a[href*="/integrations/"].rounded-md:hover {
+  background-color: rgba(47, 133, 90, 0.1);
+  border-color: #276749;
+  color: #276749;
+}
+.dark a[href*="/integrations/"].rounded-md {
+  border-color: #68d391;
+  color: #68d391;
+}
+.dark a[href*="/integrations/"].rounded-md:hover {
+  background-color: rgba(104, 211, 145, 0.15);
+  border-color: #9ae6b4;
+  color: #9ae6b4;
+}
+
+/* AI readiness — purple */
+a[href*="/ai_readiness/"].rounded-md {
+  border-color: #6b46c1;
+  color: #6b46c1;
+}
+a[href*="/ai_readiness/"].rounded-md:hover {
+  background-color: rgba(107, 70, 193, 0.1);
+  border-color: #553c9a;
+  color: #553c9a;
+}
+.dark a[href*="/ai_readiness/"].rounded-md {
+  border-color: #b794f4;
+  color: #b794f4;
+}
+.dark a[href*="/ai_readiness/"].rounded-md:hover {
+  background-color: rgba(183, 148, 244, 0.15);
+  border-color: #d6bcfa;
+  color: #d6bcfa;
+}
