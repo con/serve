@@ -76,7 +76,7 @@ The photos themselves are never modified.
 ## Integration with Google Takeout
 
 PhotoPrism is a natural destination for photos extracted from
-[Google Takeout]({{< ref "google-takeout" >}}) dumps.
+[Google Takeout]({{< ref "tools/cloud-storage/google-takeout" >}}) dumps.
 After extracting and importing Takeout photos into a git-annex dataset,
 point PhotoPrism at the import directory:
 
@@ -162,5 +162,5 @@ that aligns with the hierarchical summarization pattern.
 - [Data-Visualization Separation]({{< ref "data-visualization-separation" >}}) -- the principle PhotoPrism exemplifies
 - [Photoview]({{< ref "photoview" >}}) -- lighter alternative already deployed in Lab-in-a-Box
 - [copyparty]({{< ref "copyparty" >}}) -- minimalist alternative for quick photo album browsing
-- [Google Takeout]({{< ref "google-takeout" >}}) -- the primary source of personal photo archives
+- [Google Takeout]({{< ref "tools/cloud-storage/google-takeout" >}}) -- the primary source of personal photo archives
 - [gallery-dl]({{< ref "gallery-dl" >}}) -- archiving photos from hosting platforms

@@ -21,7 +21,7 @@ just one person who wants to own their data.
 
 ### Google Account (via Google Takeout)
 
-[Google Takeout]({{< ref "google-takeout" >}}) is the single largest ingestion event.
+[Google Takeout]({{< ref "tools/cloud-storage/google-takeout" >}}) is the single largest ingestion event.
 A typical personal Google account export includes:
 
 | Source | What | Volume |
@@ -39,7 +39,7 @@ A typical personal Google account export includes:
 | **Google Fit** | Activity and health data | Moderate |
 | **Hangouts/Chat** | Messaging history | Moderate |
 
-**Status:** [Google Takeout]({{< ref "google-takeout" >}}) documents the ingestion workflow.
+**Status:** [Google Takeout]({{< ref "tools/cloud-storage/google-takeout" >}}) documents the ingestion workflow.
 The main gap is **automated splitting and metadata reassembly** --
 a connector that takes a raw Takeout dump and produces
 well-organized domain-specific datasets.
@@ -107,9 +107,9 @@ A personal YouTube presence includes:
 - **Subscriptions** -- channels you follow
 - **Own uploads** (if any) -- personal content you've published
 
-Metadata comes from [Google Takeout]({{< ref "google-takeout" >}}).
+Metadata comes from [Google Takeout]({{< ref "tools/cloud-storage/google-takeout" >}}).
 Actual video archival for liked/playlist videos uses
-[annextube]({{< ref "annextube" >}}) or [yt-dlp]({{< ref "yt-dlp" >}}).
+[annextube]({{< ref "annextube" >}}) or [yt-dlp]({{< ref "tools/media/yt-dlp" >}}).
 
 **Desired end state:**
 
@@ -213,10 +213,10 @@ flowchart TD
 
 | Component | Tool | Status |
 |-----------|------|--------|
-| Google Takeout download | [Google Takeout]({{< ref "google-takeout" >}}) | Manual, no full automation yet |
+| Google Takeout download | [Google Takeout]({{< ref "tools/cloud-storage/google-takeout" >}}) | Manual, no full automation yet |
 | Photo browsing | [PhotoPrism]({{< ref "photoprism" >}}), [Photoview]({{< ref "photoview" >}}), [copyparty]({{< ref "copyparty" >}}) | Deployable |
 | Telegram archival | [tg-archive]({{< ref "tg-archive" >}}) | Working |
-| YouTube video archival | [annextube]({{< ref "annextube" >}}), [yt-dlp]({{< ref "yt-dlp" >}}) | Working |
+| YouTube video archival | [annextube]({{< ref "annextube" >}}), [yt-dlp]({{< ref "tools/media/yt-dlp" >}}) | Working |
 | Cloud sync | [rclone]({{< ref "rclone" >}}) | Working |
 | Image gallery archival | [gallery-dl]({{< ref "gallery-dl" >}}) | Working |
 | Infrastructure deployment | [Lab-in-a-Box]({{< ref "lab-in-a-box" >}}) | Alpha |

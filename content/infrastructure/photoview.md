@@ -71,7 +71,7 @@ it does not attempt to reorganize or deeply classify your photos.
 It presents what is on disk, as-is.
 For collections that are already well-organized
 (e.g., photos structured by date/event after import from
-[Google Takeout]({{< ref "google-takeout" >}})),
+[Google Takeout]({{< ref "tools/cloud-storage/google-takeout" >}})),
 this "just browse what's there" approach is often sufficient.
 
 ## git-annex / DataLad Integration

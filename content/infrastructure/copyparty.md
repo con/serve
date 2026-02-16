@@ -79,7 +79,7 @@ copyparty serves thumbnails, supports keyboard navigation,
 and handles common image formats out of the box.
 
 For personal photo archives (e.g., imported from
-[Google Takeout]({{< ref "google-takeout" >}})),
+[Google Takeout]({{< ref "tools/cloud-storage/google-takeout" >}})),
 copyparty can serve as a zero-setup browsing frontend:
 start the single-file server, point it at the photo directory,
 and navigate albums in the browser.
