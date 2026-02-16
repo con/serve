@@ -2,6 +2,7 @@
 title: "Automation and Pipelines"
 date: 2026-02-13
 description: "Research survey on automating vault operations -- ingestion triggers, data transformation pipelines, human-and-AI-in-the-loop curation, observability, and idempotent processing over git/git-annex/DataLad"
+standards: ["BIDS", "DICOM", "HED", "YAML"]
 ---
 
 The [vault]({{< ref "vault-organization" >}}) stores heterogeneous research artifacts.

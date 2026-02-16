@@ -2,6 +2,7 @@
 title: "Vault Organization"
 date: 2026-02-13
 description: "Survey of directory organization approaches and how they inform the layout of a DataLad superdataset vault for heterogeneous research artifacts"
+standards: ["BIDS", "JSON-LD"]
 ---
 
 The con/serve vault is a DataLad superdataset containing archived digital research artifacts

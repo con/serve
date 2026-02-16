@@ -2,6 +2,7 @@
 title: "Experience Ledger"
 date: 2026-02-13
 description: "Compressing operational experiences into reusable knowledge -- extracting patterns from execution logs, CI archives, and failure histories to guide future processing decisions"
+standards: ["LinkML", "PROV-DM"]
 ---
 
 Every pipeline run produces logs.

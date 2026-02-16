@@ -238,6 +238,22 @@ con/serve is the practical realization of the **E** principle:
 a catalog of tools and workflows for archiving
 every type of digital artifact a research group produces or depends on.
 
+The **S** principle -- Standardized -- is realized through
+a layered approach to standards:
+domain standards ([BIDS](/standards/bids/), [NWB](/standards/nwb/), [HED](/standards/hed/))
+for data organization,
+file formats ([JSON](/standards/json/), [YAML](/standards/yaml/), [TSV](/standards/tsv/))
+for interchange,
+and [LinkML](/standards/linkml/) as the common schema language
+for defining custom metadata schemas.
+LinkML definitions can generate [JSON Schema](/standards/json-schema/) for validation,
+Python dataclasses for tooling, and documentation --
+all from a single YAML source.
+This is the approach behind [concepts.datalad.org](https://concepts.datalad.org),
+[citations-collector](/tools/publications/citations-collector/),
+and the [experience ledger](/concepts/experience-ledger/) schemas.
+Browse all tools by [standard](/standards/).
+
 ## Frozen Frontiers
 
 Every productive workflow establishes **Frozen Frontiers** --

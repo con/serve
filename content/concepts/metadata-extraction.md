@@ -2,6 +2,7 @@
 title: "Metadata Extraction and Dependencies"
 date: 2026-02-13
 description: "Extracting, summarizing, and keeping up-to-date the data knowledge that lives inside vault datasets -- from per-file metadata to hierarchical summary tables, with git-native dependency tracking for incremental recomputation"
+standards: ["BIDS", "DICOM", "JSON-LD", "TSV", "PROV-DM"]
 ---
 
 Every dataset in the vault contains more knowledge

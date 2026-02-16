@@ -2,6 +2,7 @@
 title: "Domain Extensions"
 date: 2026-02-12
 description: "How the generic con/serve archival platform extends for domain-specific workflows and standards"
+standards: ["BIDS", "NWB", "DICOM", "HED", "NIDM"]
 ---
 
 The con/serve platform is **media-agnostic** at its core. git-annex does not care whether a file is a video, a DICOM scan, a genome sequence, or a PDF -- it stores content-addressed blobs and tracks their locations. DataLad does not care whether a dataset holds Slack exports or neuroimaging data -- it manages versioned collections of files.
@@ -43,7 +44,17 @@ Controlled vocabularies, ontologies, and schemas:
 - **What ontologies** describe this domain's data?
 - **How** are they represented in the DataLad dataset metadata?
 
+Custom metadata schemas should be defined in [LinkML]({{< ref "/standards/linkml" >}})
+wherever possible -- the common schema language in the con/serve ecosystem --
+so that tools can validate, generate documentation, and interoperate
+across domain boundaries.
+
 ## Example: Neuroimaging Extension
+
+The neuroscience ecosystem has the most developed set of interrelated standards.
+For an overview of how they fit together, see the poster
+["The Ecosystem of Standards in Neuroscience: Which Ones Are For You?"](https://zenodo.org/records/18333008)
+(Rübel, Halchenko et al., 2025).
 
 Neuroimaging is the most developed domain extension in the con/serve ecosystem, reflecting its origins in the [Center for Open Neuroscience](https://centerforopenneuroscience.org/).
 

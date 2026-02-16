@@ -6,6 +6,7 @@ summary: "Discovers citations across CrossRef, OpenCitations, DataCite, and Open
 categories: ["Publications"]
 tags: ["CON", "citations", "scholarly", "crossref", "opencitations", "datacite", "openale", "zotero", "pdf", "provenance"]
 media_types: ["publications"]
+standards: ["LinkML", "JSON", "YAML", "JSON-LD"]
 integrations: ["native-datalad"]
 ai_readiness: ["ai-ready"]
 params:

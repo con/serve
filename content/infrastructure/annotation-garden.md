@@ -5,6 +5,7 @@ description: "Open infrastructure for collaborative, standards-based annotation 
 summary: "An initiative providing open infrastructure for collaborative annotation of stimuli used in neuroscience research. Uses git branches as stackable annotation layers, BIDS/HED standards for interoperability, and AI-accelerated annotation generation with human refinement. Directly relevant to ReproStim-captured audio/video stimuli and generalizable to any experiment with media needing temporal annotation."
 categories: ["Infrastructure"]
 tags: ["annotation", "HED", "BIDS", "neuroscience", "stimuli", "video", "images", "AI", "ReproStim", "CON-contrib"]
+standards: ["BIDS", "HED", "JSON"]
 integrations: ["git-only"]
 ai_readiness: ["ai-ready"]
 params:

@@ -66,3 +66,8 @@
   name = "AI Readiness"
   pageRef = "ai_readiness"
   weight = 50
+
+[[footer]]
+  name = "Standards"
+  pageRef = "standards"
+  weight = 60

@@ -5,6 +5,7 @@ description: "Generate user-friendly, browser-based data catalogs from structure
 summary: "A DataLad extension that creates browsable Vue.js web catalogs from dataset metadata, with schema validation and support for arbitrary metadata sources."
 categories: ["Infrastructure"]
 tags: ["CON-ecosystem", "MIH", "datalad", "catalog", "metadata", "web", "vue"]
+standards: ["JSON Schema", "JSON-LD"]
 integrations: ["native-datalad"]
 ai_readiness: ["ai-ready"]
 params:

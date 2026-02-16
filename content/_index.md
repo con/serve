@@ -6,6 +6,14 @@ description: "Conserve and serve digital research artifacts -- a knowledge base 
 
 ## Vision
 
+> **Note on domain examples:**
+> The con/serve platform is domain-agnostic -- git-annex, DataLad, and the patterns
+> described here work for any field.
+> Many examples reference neuroscience and psychology
+> because that is our primary domain at the
+> [Center for Open Neuroscience](https://centerforopenneuroscience.org/),
+> but the tools and architecture apply wherever digital artifacts need archiving.
+
 Research generates far more than code and data.
 Every Slack thread, Zoom recording, GitHub discussion, AI coding session, and conference PDF
 is a piece of the scholarly record -- and most of it is quietly rotting on someone else's servers.

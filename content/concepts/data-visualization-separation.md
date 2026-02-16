@@ -2,6 +2,7 @@
 title: "Data-Visualization Separation"
 date: 2026-02-13
 description: "The principle of strictly separating collected data from the tools that visualize and navigate it, and the role of hierarchical summarization in making this practical"
+standards: ["TSV", "JSON"]
 ---
 
 Software engineering settled this decades ago:
