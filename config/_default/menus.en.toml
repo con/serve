@@ -46,3 +46,18 @@
   name = "Categories"
   pageRef = "categories"
   weight = 20
+
+[[footer]]
+  name = "Media Types"
+  pageRef = "media_types"
+  weight = 30
+
+[[footer]]
+  name = "Integrations"
+  pageRef = "integrations"
+  weight = 40
+
+[[footer]]
+  name = "AI Readiness"
+  pageRef = "ai_readiness"
+  weight = 50
