@@ -8,6 +8,10 @@ archive/
 .wget-hsts
 # for now at least
 projects/
+.vagrant.d/
 .config/
+
 .local/
 .cache
+
+
