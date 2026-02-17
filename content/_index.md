@@ -98,11 +98,11 @@ from the YODA & BIDS webinar.
 
 | Section | What you will find |
 |---|---|
-| **[About](/about/)** | Project background, principles, and how to contribute |
-| | &ensp; [YODA Principles](/about/#yoda-and-how-conserve-extends-it) -- how con/serve extends YODA to all artifacts |
+| **[About](/about/)** | Project vision, principles, and how to contribute |
 | | &ensp; [Architecture](/about/#architecture) -- full system diagram (inbound / vault / outbound) |
+| | &ensp; [YODA Principles](/about/#yoda-and-how-conserve-extends-it) -- how con/serve extends YODA to all artifacts |
 | | &ensp; [STAMPED Framework](/about/#stamped-principles) -- guiding principles for artifact management |
-| | &ensp; [Frozen Frontiers](/about/#frozen-frontiers) -- deliberate working boundaries and traversal |
+| | &ensp; [Frozen Frontiers](/about/#frozen-frontiers) -- deliberate working boundaries and compressed context |
 | | &ensp; [Privacy & Access](/about/#privacy-and-access-control) -- archive aggressively, distribute selectively |
 | | &ensp; [Integration Levels](/about/#integration-levels) -- native-datalad, git-annex, git-only, external |
 | | &ensp; [AI Readiness](/about/#ai-readiness-levels) -- ai-ready, ai-partial, ai-manual |
@@ -110,3 +110,4 @@ from the YODA & BIDS webinar.
 | **[Tools](/tools/)** | Catalog of archival tools organized by artifact type |
 | **[Infrastructure](/infrastructure/)** | Self-hosted services for managing and serving archived artifacts |
 | **[Concepts](/concepts/)** | Cross-cutting patterns for ingestion, conservation, and distribution |
+| **[User Stories](/user-stories/)** | Concrete archival scenarios that drive development -- from personal vaults to lab infrastructure |
