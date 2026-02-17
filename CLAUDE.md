@@ -27,3 +27,16 @@ This project is in an **early exploratory phase** — assembling the landscape o
 - **DO** describe desired end states (vault layout, frontends) but keep them concise.
 
 In short: document what is known, flag what is not, and resist the urge to fill unknowns with speculative detail.
+
+## Path Notation Convention
+
+In vault layout diagrams, `//` (double slash) marks a git submodule
+(DataLad subdataset) boundary. A single `/` is a plain directory separator
+within the same git repository.
+
+Example:
+```
+vault//communications/slack//general/2026-01.json
+^^^^^  ^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+superdataset subdatasetpath  files within the slack subdataset
+```

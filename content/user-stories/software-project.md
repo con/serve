@@ -144,35 +144,41 @@ In the vault, content from private repos carries
 
 > **TODO:** AI-generated layout, to be curated.
 
+The layout follows the [self-contained per-entity grouping]({{< ref "vault-organization#self-contained-per-entity-grouping" >}})
+principle: everything about a given repository --
+code, issues, CI logs, discussions --
+lives under one per-repo superdataset
+rather than being scattered across artifact-type trees.
+`//` marks [subdataset boundaries]({{< ref "vault-organization#dataset-nesting-notation" >}});
+plain `/` is a directory within the same dataset.
+
 ```
-project-vault/                           # DataLad superdataset
-    ├── repos/                           # Git mirrors (one per repo)
-    │   ├── dandi-cli/
-    │   ├── dandi-archive/
-    │   ├── dandischema/
-    │   └── ...
-    ├── issues/                          # Exported issues/PRs (git-bug or JSON)
-    │   ├── dandi-cli/
-    │   └── ...
-    ├── discussions/                     # Exported GitHub Discussions
-    │   ├── dandi-cli/
-    │   └── ...
-    ├── ci/                              # Archived CI logs (con/tinuous)
-    │   ├── github/
-    │   │   └── push/2026/02/...
-    │   └── ...
-    ├── communications/
-    │   └── slack/                       # Archived Slack workspace
-    ├── releases/                        # Release artifacts
-    │   ├── dandi-cli/
-    │   └── ...
-    └── .datalad/
+project-vault//                          # DataLad superdataset
+    repos/                               # Organizational directory (not a subdataset)
+        dandi-cli//                      # Per-repo superdataset: everything about dandi-cli
+            git//                        # Git mirror (the repo itself)
+            issues//                     # git-bug bridge or JSON export
+            discussions//                # Exported GitHub Discussions
+            wiki//                       # Wiki pages
+            tinuous-logs//               # CI log archive (con/tinuous)
+            releases/                    # Release artifacts (plain dir or subdataset)
+        dandi-archive//
+            git//
+            issues//
+            ...
+        dandischema//
+            ...
+    communications/
+        slack//                          # Archived Slack workspace
+    .datalad/
 ```
 
-Each repository's forge artifacts (issues, discussions, CI logs)
-are separate subdatasets,
+Each aspect within a per-repo superdataset
+is its own subdataset (`git//`, `issues//`, `tinuous-logs//`),
 enabling independent synchronization schedules --
-issues sync frequently, CI logs archive nightly.
+issues sync frequently, CI logs archive nightly --
+while `datalad get repos/dandi-cli` retrieves
+everything about that repository as a unit.
 
 ## Distribution and Privacy
 

@@ -183,6 +183,25 @@ become candidates for solidification into deterministic CLI commands --
 the `/vault.add-source` skill might eventually generate
 a `vault-ingest` config file that a CLI tool consumes.
 
+## Research Projects
+
+### Self-Contained GitHub Repository Archival
+
+The [Software Project]({{< ref "software-project" >}}) user story
+archives multiple artifact types per GitHub repository
+(code, issues, CI logs, discussions).
+The [vault layout]({{< ref "vault-organization#self-contained-per-entity-grouping" >}})
+groups these under a per-repo superdataset,
+but the vault's deep hierarchy doesn't map directly
+to a forge's flat `{org}/{repo}` namespace.
+
+The [self-contain-github-repo](/projects/self-contain-github-repo/) project
+explores this duality:
+how to organize repo artifacts on the vault side (subdataset structure)
+and represent them on the forge side (naming conventions, git namespaces, ref prefixes).
+This directly affects Track 2 (how repos are organized on Forgejo-Aneksajo)
+and Track 1 (how ingestion containers deposit artifacts into the vault).
+
 ## Dependencies Between Tracks
 
 ```

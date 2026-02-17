@@ -7,7 +7,7 @@ resources/_gen/
 archive/
 .wget-hsts
 # for now at least
-projects/
+#projects/
 .vagrant.d/
 .config/
 code/

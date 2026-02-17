@@ -14,6 +14,10 @@ How should this heterogeneous collection be organized on disk?
 This page surveys existing approaches to directory organization,
 evaluates their fit for the vault use case,
 and identifies the principles that should guide the layout.
+Each [user story](/user-stories/) includes a "Hypothetical Vault Organization" section
+showing the proposed superdataset structure that brings its data sources together --
+the `//` boundaries (see [Dataset Nesting Notation](#dataset-nesting-notation) below)
+show where independent datasets are composed into a coherent whole.
 
 ## The Challenge
 
@@ -226,6 +230,33 @@ Nesting depth is unlimited,
 and subdatasets can live on different servers,
 making the superdataset a *curated catalog* pointing to distributed storage.
 
+## Dataset Nesting Notation
+
+Vault layout diagrams in this documentation use `//` (double slash) to mark
+a **git submodule (DataLad subdataset) boundary**.
+A single `/` is a plain directory separator within the same git repository.
+
+```
+project-vault//repos/dandi-cli//git//
+^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^ ^^^^^
+superdataset    subdataset       sub-subdataset
+               (plain dir `repos/` is just
+                organizational grouping)
+```
+
+This matters because subdataset boundaries determine
+**cloning, syncing, and access control** granularity.
+A `datalad get` on `project-vault//repos/dandi-cli//`
+fetches the per-repo superdataset without pulling every sibling repo,
+while `datalad get project-vault//repos/dandi-cli//tinuous-logs//`
+fetches only the CI log archive within it.
+Without the `//` annotation, a reader of the layout diagram
+cannot tell which path segments are independent datasets
+and which are plain directories in the same repository.
+
+This is a **documentation convention**, not a filesystem feature --
+actual paths on disk use single `/`.
+
 ## Emerging Principles
 
 From this survey, several principles emerge for the vault layout:
@@ -253,6 +284,76 @@ From this survey, several principles emerge for the vault layout:
 6. **Queryable without a database** (from hive partitioning / mykrok) --
    directory structure doubles as a query schema for tools like DuckDB,
    eliminating the need for a separate catalog database
+
+7. **Self-contained per-entity grouping** (from STAMPED **S**) --
+   when a vault archives multiple aspects of the same entity
+   (e.g., a GitHub repo's code, issues, CI logs, discussions),
+   group them under one subdataset
+   rather than scattering by artifact type.
+   The per-entity superdataset is a complete retrieval unit:
+   `datalad get` on it brings everything about that entity,
+   and `datalad drop` removes it cleanly.
+
+Contrast two layouts for archiving a GitHub repository's artifacts:
+
+**Scattered (by artifact type):**
+```
+project-vault//repos/dandi-cli//
+project-vault//issues/dandi-cli//
+project-vault//ci/dandi-cli//
+```
+
+Each aspect of `dandi-cli` lives under a different top-level tree.
+Getting "everything about dandi-cli" requires knowing
+where each artifact type is stored.
+
+**Grouped (by entity, self-contained):**
+```
+project-vault//repos/dandi-cli//
+    git//              # the repo itself
+    issues//           # git-bug or JSON
+    tinuous-logs//     # CI log archive
+    discussions//      # exported discussions
+```
+
+The vault superdataset (`project-vault//`) contains
+plain directories like `repos/` for organizational grouping --
+these are NOT separate subdatasets.
+Subdatasets appear at the per-repo level (`dandi-cli//`)
+and per-aspect level within (`git//`, `issues//`, etc.).
+Only put `//` where there's a genuine need
+for independent versioning, syncing, or access control.
+
+## Vault-to-Forge Mapping
+
+The vault's deep subdataset hierarchy
+doesn't map directly to a forge's flat `{org}/{repo}` namespace.
+A vault might nest `project-vault//repos/dandi-cli//tinuous-logs//`,
+but Forgejo or Gitea has no concept of sub-repositories --
+only `{org}/{repo}`.
+
+This is an **open research question**
+explored in the [self-contain-github-repo](/projects/self-contain-github-repo/) project.
+The options under consideration include:
+
+- **Satellite repos with naming convention** --
+  `dandi-cli`, `dandi-cli--tinuous-logs`, `dandi-cli--issues`.
+  Simple, but pollutes the org namespace.
+- **Single repo with custom ref prefixes** --
+  git-bug already uses `refs/bugs/` within the repo;
+  the same pattern could extend to `refs/tinuous/...`, `refs/discussions/...`.
+  Most self-contained, but requires tooling support.
+- **Git namespaces** (`GIT_NAMESPACE`) --
+  partitions refs and shares the object store,
+  so a clone only fetches the requested namespace.
+  But Forgejo/Gitea don't support namespaces natively
+  (no UI, no API filtering).
+- **Forgejo org-level grouping** --
+  organizations provide one level of hierarchy
+  but not the deeper nesting the vault uses.
+
+For parallel discussion about naming within nested structures,
+see [bids-specification#2191](https://github.com/bids-standard/bids-specification/issues/2191).
 
 ## See Also
 
