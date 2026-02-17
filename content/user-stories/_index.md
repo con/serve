@@ -23,3 +23,18 @@ Build a comprehensive personal digital archive from a Google account,
 photo collections, personal messaging channels, YouTube subscriptions,
 and other personal data sources.
 The single largest archival project most individuals will undertake.
+
+**[Neuroimaging Lab](neuroimaging-lab/)** --
+A research lab running MRI experiments with ReproIn-convention DICOMs,
+ReproStim stimulus capture, CurDes BIRCH behavioral events,
+Slack for communication, and GitHub for processing code.
+Data flows through HeuDiConv into BIDS,
+then MRIQC and fMRIPrep for preprocessing.
+
+**[Brain Imaging Center](brain-imaging-center/)** --
+A shared MRI facility serving multiple labs:
+collecting DICOMs with ReproIn conventions,
+running weekly phantom QA to monitor scanner health,
+recording environmental conditions,
+capturing stimuli and events for all experiments,
+and providing streamlined preprocessing via HPC.
