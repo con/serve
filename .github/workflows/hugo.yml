@@ -32,8 +32,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false
           fetch-depth: 0
+
+      - name: Fetch theme submodule
+        run: git submodule update --init themes/congo
 
       - name: Setup Pages
         id: pages
