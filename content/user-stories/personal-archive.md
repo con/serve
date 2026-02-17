@@ -172,6 +172,8 @@ and fine-grained access control via git-annex `wanted` expressions.
 
 ## Workflow Overview
 
+> **TODO:** AI-generated layout, to be curated.
+
 {{< mermaid >}}
 flowchart TD
     GT[Google Takeout dump] --> extract[Extract & split]

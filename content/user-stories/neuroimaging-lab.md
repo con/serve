@@ -151,6 +151,10 @@ A lab typically runs multiple studies concurrently.
 The vault groups data by study under `studies/`,
 with shared sourcedata at the top level
 and per-study BIDS datasets and derivatives below.
+The BIDS-converted data lives under `sourcedata/bids-raw/`
+following the BIDS convention for raw data placement
+(see [bids-specification#2191](https://github.com/bids-standard/bids-specification/pull/2191)
+for related discussions on directory naming).
 Preprocessing may happen per recording session
 (since sessions arrive incrementally from the scanner),
 with study-level aggregation happening later.
@@ -168,7 +172,7 @@ lab-vault/                               # DataLad superdataset
     │   └── physio/                      # Physiological recordings (if any)
     ├── studies/                          # Per-study BIDS datasets
     │   ├── study-taskswitch/            # One study
-    │   │   ├── rawdata/                 # BIDS-converted (aggregated from sourcedata)
+    │   │   ├── sourcedata/bids-raw/    # BIDS-converted (aggregated from sourcedata)
     │   │   │   ├── dataset_description.json
     │   │   │   ├── participants.tsv
     │   │   │   └── sub-01/
@@ -181,7 +185,7 @@ lab-vault/                               # DataLad superdataset
     │   │       ├── mriqc/               # QC reports for this study
     │   │       └── fmriprep/            # Preprocessed data
     │   ├── study-language/              # Another study
-    │   │   ├── rawdata/
+    │   │   ├── sourcedata/bids-raw/
     │   │   └── derivatives/
     │   └── ...
     ├── code/                            # Processing scripts, heuristics
@@ -209,7 +213,7 @@ following [YODA principles]({{< ref "about#yoda-and-how-conserve-extends-it" >}}
 
 | Content | Distribution | Rationale |
 |---------|-------------|-----------|
-| BIDS rawdata (defaced) | OpenNeuro / DANDI | Public sharing after defacing |
+| BIDS sourcedata/bids-raw (defaced) | OpenNeuro / DANDI | Public sharing after defacing |
 | Derivatives | OpenNeuro (as derivative dataset) | Public, no PII |
 | Raw DICOMs | Private (encrypted backup only) | Contains facial features, PHI |
 | Slack archives | Private (lab remote only) | Confidential communications |
@@ -224,13 +228,15 @@ See [Privacy and Access Control]({{< ref "about#privacy-and-access-control" >}})
 
 ## Workflow Overview
 
+> **TODO:** AI-generated layout, to be curated.
+
 {{< mermaid >}}
 flowchart TD
     scanner[MRI Scanner] -->|DICOMs with ReproIn naming| dicoms[sourcedata/dicoms/]
     reprostim[ReproStim] -->|screen capture + QR timing| stim[sourcedata/reprostim/]
     birch[CurDes BIRCH] -->|event timing logs| events[sourcedata/birch/]
 
-    dicoms -->|HeuDiConv + ReproIn routing| studies[studies/{study}/rawdata/]
+    dicoms -->|HeuDiConv + ReproIn routing| studies["studies/*/sourcedata/bids-raw/"]
     stim -->|timing extraction + annotation| studies
     events -->|convert to BIDS events.tsv| studies
 
@@ -243,7 +249,7 @@ flowchart TD
     qc_gate -->|yes| fmriprep[fMRIPrep -- preprocessing]
     qc_gate -->|flag| review[Human review]
 
-    fmriprep --> derivatives[studies/{study}/derivatives/]
+    fmriprep --> derivatives["studies/*/derivatives/"]
 
     slack[Slack] -->|slackdump| comms[communications/slack/]
     gcal[Google Calendar] -->|export| calendar[calendar/]

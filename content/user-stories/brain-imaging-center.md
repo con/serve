@@ -159,7 +159,10 @@ need special handling.
 > **TODO:** AI-generated layout, to be curated.
 
 The center maintains its own vault,
-distinct from each lab's individual vault:
+distinct from each lab's individual vault.
+BIDS-converted data lands in `sourcedata/bids-raw/`
+(see [bids-specification#2191](https://github.com/bids-standard/bids-specification/pull/2191)
+for related naming discussions):
 
 ```
 center-vault/                            # DataLad superdataset
@@ -168,7 +171,7 @@ center-vault/                            # DataLad superdataset
     ├── studies/                          # Per-study BIDS datasets
     │   ├── study-alpha/                 # Lab A's study
     │   │   ├── sourcedata/dicoms/
-    │   │   ├── rawdata/                 # BIDS
+    │   │   ├── sourcedata/bids-raw/    # BIDS
     │   │   └── derivatives/
     │   │       ├── mriqc/
     │   │       └── fmriprep/
@@ -256,6 +259,8 @@ each lab's remote only receives content tagged with their study name.
 
 ## Workflow Overview
 
+> **TODO:** AI-generated layout, to be curated.
+
 {{< mermaid >}}
 flowchart TD
     scanner[MRI Scanner] -->|DICOMs| incoming[incoming/]
@@ -264,7 +269,7 @@ flowchart TD
     reprostim[ReproStim] -->|captures| stim[reprostim/]
     birch[CurDes BIRCH] -->|events| events[birch/]
 
-    incoming -->|ReproIn routing + HeuDiConv| studies[studies/{study}/rawdata/]
+    incoming -->|ReproIn routing + HeuDiConv| studies["studies/*/sourcedata/bids-raw/"]
     qa_raw -->|MRIQC phantom mode| qa_reports[qa/phantom/trends/]
     stim -->|match to session| studies
     events -->|match to session| studies
@@ -274,7 +279,7 @@ flowchart TD
     validate -->|no| fix[Fix / escalate]
 
     mriqc --> fmriprep[fMRIPrep on HPC]
-    fmriprep --> derivs[studies/{study}/derivatives/]
+    fmriprep --> derivs["studies/*/derivatives/"]
 
     derivs -->|datalad push| lab_a[Lab A vault]
     derivs -->|datalad push| lab_b[Lab B vault]

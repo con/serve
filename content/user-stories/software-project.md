@@ -189,6 +189,8 @@ issues sync frequently, CI logs archive nightly.
 
 ## Workflow Overview
 
+> **TODO:** AI-generated layout, to be curated.
+
 {{< mermaid >}}
 flowchart TD
     gh_org[GitHub Organization] -->|git mirror| repos[repos/]

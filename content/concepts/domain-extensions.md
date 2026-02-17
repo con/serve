@@ -82,8 +82,8 @@ The [BIDS](https://bids-specification.readthedocs.io/) (Brain Imaging Data Struc
 | Target | Tool | What Gets Published |
 |--------|------|-------------------|
 | [OpenNeuro](https://openneuro.org) | `datalad push` / OpenNeuro CLI | BIDS datasets |
-| [DANDI](https://dandiarchive.org) | `datalad-dandi` | NWB neurophysiology data |
-| [EMBER](https://ember.science) | DataLad publish | Multi-modal brain data |
+| [DANDI](https://dandiarchive.org) | [dandi-cli](https://dandi.readthedocs.io/) | NWB neurophysiology data |
+| [EMBER](https://ember.science) | TODO: verify submission tool | Multi-modal brain data |
 | [OSF](https://osf.io) | `datalad-osf` | Any dataset |
 
 ### Metadata Standards
