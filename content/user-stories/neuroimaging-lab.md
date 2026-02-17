@@ -101,7 +101,16 @@ The code is already in git, but associated artifacts --
 issues, pull request discussions, wiki pages, CI logs --
 are platform-hosted and at risk of loss.
 [con/tinuous]({{< ref "tinuous" >}}) archives CI logs,
-and GitHub export tools capture issue and discussion metadata.
+[git-bug]({{< ref "git-bug" >}}) bridges issues into git,
+and [python-github-backup]({{< ref "github-backup" >}})
+captures the full repository metadata.
+
+The lab's [Forgejo-Aneksajo]({{< ref "forgejo-aneksajo" >}}) instance
+(deployed via [Lab-in-a-Box]({{< ref "lab-in-a-box" >}}))
+can mirror GitHub repositories and use GitHub as an OAuth2 authentication source,
+so lab members log in with their existing GitHub accounts.
+See the [Software Project]({{< ref "software-project" >}}) story
+for a deeper treatment of GitHub organization archival.
 
 ## Processing Pipeline
 
@@ -243,6 +252,9 @@ flowchart TD
 | Resource telemetry | [con/duct](https://github.com/con/duct) | Stable |
 | Slack archival | [slackdump]({{< ref "slackdump" >}}) | Working |
 | CI log archival | [con/tinuous]({{< ref "tinuous" >}}) | Stable |
+| Issue archival | [git-bug]({{< ref "git-bug" >}}) | Stable |
+| Repository backup | [python-github-backup]({{< ref "github-backup" >}}) | Stable |
+| Self-hosted forge | [Forgejo-Aneksajo]({{< ref "forgejo-aneksajo" >}}) | Beta |
 | Deployment | [Lab-in-a-Box]({{< ref "lab-in-a-box" >}}) | Alpha |
 
 ## See Also
@@ -255,3 +267,5 @@ flowchart TD
   capturing processing failures and resource baselines
 - [Brain Imaging Center]({{< ref "brain-imaging-center" >}}) --
   the complementary story from the facility's perspective
+- [Software Project]({{< ref "software-project" >}}) --
+  deeper treatment of GitHub organization archival and Forgejo mirroring

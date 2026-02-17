@@ -221,7 +221,7 @@ flowchart TD
 | Image gallery archival | [gallery-dl]({{< ref "gallery-dl" >}}) | Working |
 | Infrastructure deployment | [Lab-in-a-Box]({{< ref "lab-in-a-box" >}}) | Alpha |
 
-## Privacy Considerations
+## Distribution and Privacy
 
 A personal archive contains some of the most sensitive data imaginable:
 location history, private messages, financial records, health data, and photos.
@@ -240,3 +240,12 @@ git annex wanted public-remote "include=*.md or include=*.tsv"
 git annex wanted encrypted-backup "anything"
 git annex wanted here "anything"
 ```
+
+## See Also
+
+- [Vault Organization]({{< ref "vault-organization" >}}) --
+  directory layout approaches for heterogeneous archives
+- [Privacy and Access Control]({{< ref "about#privacy-and-access-control" >}}) --
+  the principles behind selective distribution
+- [Ingestion Patterns]({{< ref "ingestion-patterns" >}}) --
+  the paradigms used for different data sources

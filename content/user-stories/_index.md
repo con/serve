@@ -38,3 +38,9 @@ running weekly phantom QA to monitor scanner health,
 recording environmental conditions,
 capturing stimuli and events for all experiments,
 and providing streamlined preprocessing via HPC.
+
+**[Software Project](software-project/)** --
+An open-source project on GitHub (prototypical target: DANDI)
+needs to archive all forge artifacts -- repositories, issues, PRs,
+Actions logs, Discussions -- alongside Slack communications,
+with a Forgejo-Aneksajo mirror using GitHub authentication.
