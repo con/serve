@@ -1,0 +1,1 @@
+../../../.claude/agents/vault-architect.md

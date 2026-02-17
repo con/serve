@@ -55,6 +55,11 @@ extracted from execution logs (con/duct, con/tinuous, ReproMan).
 Operational knowledge specific to the processing system,
 distinct from data knowledge about the datasets themselves.
 
+**[AI Agents and Vault Operations](agents/)** --
+How AI agents operate within the vault -- discovery, ingestion,
+architecture, and pipeline monitoring -- and the solidification
+lifecycle from agent-assisted exploration to deterministic pipelines.
+
 **[Domain Extensions](domain-extensions/)** --
 How the generic con/serve platform extends
 to domain-specific workflows like neuroimaging, genomics, or digital humanities,

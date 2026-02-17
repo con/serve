@@ -1,4 +1,7 @@
 ---
+title: "Pipeline Operator Agent"
+date: 2026-02-17
+categories: ["Concepts"]
 name: pipeline-operator
 description: >
   Monitors, troubleshoots, and operates automated vault pipelines.

@@ -1,4 +1,7 @@
 ---
+title: "Vault Architect Agent"
+date: 2026-02-17
+categories: ["Concepts"]
 name: vault-architect
 description: >
   Architectural system designer for DataLad/git-annex data preservation vaults.

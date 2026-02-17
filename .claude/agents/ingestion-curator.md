@@ -1,4 +1,7 @@
 ---
+title: "Ingestion Curator Agent"
+date: 2026-02-17
+categories: ["Concepts"]
 name: ingestion-curator
 description: >
   Reviews and formalizes new data imports into the vault.

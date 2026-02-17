@@ -229,6 +229,9 @@ to the original log line that explains the anomaly.
 
 ## Agents and the Ledger
 
+The vault's [AI agents]({{< ref "concepts/agents" >}}) are
+both consumers and producers of the experience ledger.
+
 An AI agent specialized in pipeline operations --
 a "pipeline-operator" --
 would be the primary consumer of the experience ledger.
@@ -301,6 +304,8 @@ parallelization, and preemptive failure avoidance.
 
 ## See Also
 
+- [AI Agents and Vault Operations]({{< ref "concepts/agents" >}}) --
+  the agent roles that consume and produce ledger entries
 - [Metadata Extraction and Dependencies]({{< ref "metadata-extraction" >}}) --
   data knowledge extraction that the ledger correlates with operational outcomes
 - [Automation and Pipelines]({{< ref "automation-and-pipelines" >}}) --

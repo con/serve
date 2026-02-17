@@ -445,3 +445,7 @@ email archives with attachments that need parsing.
 that requires transcription, OCR, or other processing before an LLM can use it.
 Examples: video recordings, audio files, image datasets.
 The metadata (titles, descriptions, timestamps) may still be ai-ready.
+
+For how AI agents use these readiness levels operationally --
+and the lifecycle from agent-assisted exploration to deterministic pipelines --
+see [AI Agents and Vault Operations]({{< ref "concepts/agents" >}}).

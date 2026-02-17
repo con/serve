@@ -68,3 +68,9 @@ AI session archival tools generally follow one of two strategies:
 The ideal workflow combines both:
 lifecycle hooks for real-time capture during active development,
 and export tools for backfilling historical sessions.
+
+## Related
+
+- [AI Agents and Vault Operations]({{< ref "concepts/agents" >}}) --
+  how AI agents operate within the vault, the solidification lifecycle,
+  and why archived sessions serve as both provenance and experience ledger input

@@ -184,6 +184,11 @@ Patterns for this:
   proposes a resolution, and presents it for human approval,
   with the full exchange recorded as provenance
 
+See [AI Agents and Vault Operations]({{< ref "concepts/agents" >}})
+for the agent roles that participate in these loops
+and the solidification lifecycle that moves operations
+from agent-assisted to fully automated.
+
 ### Branch-Based Workflow Orchestration (BIDS-flux)
 
 [BIDS-flux](https://bids-flux-docs.readthedocs.io/en/latest/)
@@ -407,6 +412,7 @@ aligns with how vault operators already think about batch processing.
 
 ## See Also
 
+- [AI Agents and Vault Operations]({{< ref "concepts/agents" >}}) -- agent roles and the solidification lifecycle from agent-assisted operations to deterministic pipelines
 - [Metadata Extraction and Dependencies]({{< ref "metadata-extraction" >}}) -- dependency tracking and incremental recomputation for data summaries and derivatives
 - [Experience Ledger]({{< ref "experience-ledger" >}}) -- compressing execution logs into reusable operational knowledge
 - [Ingestion Patterns]({{< ref "ingestion-patterns" >}}) -- how data enters the vault

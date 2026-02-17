@@ -58,6 +58,7 @@ System prompt body in Markdown.
 | [vault-architect](vault-architect.md) | opus | Architectural design: vault layout, dataset hierarchies, storage strategies, distribution policies |
 | [ingestion-curator](ingestion-curator.md) | sonnet | Formalizing data imports: `datalad run` wrappers, metadata annotation, idempotency, auditing |
 | [pipeline-operator](pipeline-operator.md) | sonnet | Operations: pipeline monitoring, failure triage, freshness checks, escalation resolution, recovery |
+| [discovery-curator](discovery-curator.md) | sonnet | Discovery: scanning environments for archivable data sources, inventorying platforms, prioritizing ingestion targets |
 
 ## TODO
 
