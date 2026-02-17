@@ -154,7 +154,9 @@ captures processing failures and resource baselines per study type,
 so the center builds institutional knowledge about which protocols
 need special handling.
 
-## Vault Organization
+## Hypothetical Vault Organization
+
+> **TODO:** AI-generated layout, to be curated.
 
 The center maintains its own vault,
 distinct from each lab's individual vault:
@@ -254,7 +256,7 @@ each lab's remote only receives content tagged with their study name.
 
 ## Workflow Overview
 
-```mermaid
+{{< mermaid >}}
 flowchart TD
     scanner[MRI Scanner] -->|DICOMs| incoming[incoming/]
     phantom[Weekly Phantom] -->|DICOMs| qa_raw[qa/phantom/]
@@ -296,7 +298,7 @@ flowchart TD
     subgraph hpc[HPC Cluster]
         fmriprep
     end
-```
+{{< /mermaid >}}
 
 ## Relevant Tools
 

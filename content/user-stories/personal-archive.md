@@ -143,7 +143,9 @@ Actual video archival for liked/playlist videos uses
 | **Financial records** | Bank statements, receipts | Manual import, git-annex |
 | **Music library** | Purchased music, playlists | Direct file archive |
 
-## Vault Organization
+## Hypothetical Vault Organization
+
+> **TODO:** AI-generated layout, to be curated.
 
 The personal archive as a DataLad superdataset:
 
@@ -170,7 +172,7 @@ and fine-grained access control via git-annex `wanted` expressions.
 
 ## Workflow Overview
 
-```mermaid
+{{< mermaid >}}
 flowchart TD
     GT[Google Takeout dump] --> extract[Extract & split]
     extract --> photos[Photos dataset]
@@ -207,7 +209,7 @@ flowchart TD
         annextube_ui
         search
     end
-```
+{{< /mermaid >}}
 
 ## Relevant Tools
 

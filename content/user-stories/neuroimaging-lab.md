@@ -143,28 +143,47 @@ registered in the dataset via `datalad containers-add`,
 following the [ReproNim/containers](https://github.com/ReproNim/containers)
 collection pattern.
 
-## Vault Organization
+## Hypothetical Vault Organization
+
+> **TODO:** AI-generated layout, to be curated.
+
+A lab typically runs multiple studies concurrently.
+The vault groups data by study under `studies/`,
+with shared sourcedata at the top level
+and per-study BIDS datasets and derivatives below.
+Preprocessing may happen per recording session
+(since sessions arrive incrementally from the scanner),
+with study-level aggregation happening later.
 
 ```
 lab-vault/                               # DataLad superdataset
-    ├── sourcedata/
+    ├── sourcedata/                      # Raw acquisitions (all studies)
     │   ├── dicoms/                      # Raw DICOMs (ReproIn naming)
-    │   │   ├── sub-01/ses-01/
+    │   │   ├── {date}/{session}/        # Per-session, routed by ReproIn study name
     │   │   └── ...
     │   ├── reprostim/                   # Stimulus capture recordings
+    │   │   └── {date}/{session}/
     │   ├── birch/                       # Behavioral event logs
+    │   │   └── {date}/{session}/
     │   └── physio/                      # Physiological recordings (if any)
-    ├── rawdata/                         # BIDS-converted dataset
-    │   ├── dataset_description.json
-    │   ├── participants.tsv
-    │   ├── sub-01/
-    │   │   ├── anat/
-    │   │   ├── func/
-    │   │   └── fmap/
+    ├── studies/                          # Per-study BIDS datasets
+    │   ├── study-taskswitch/            # One study
+    │   │   ├── rawdata/                 # BIDS-converted (aggregated from sourcedata)
+    │   │   │   ├── dataset_description.json
+    │   │   │   ├── participants.tsv
+    │   │   │   └── sub-01/
+    │   │   │       ├── ses-01/
+    │   │   │       │   ├── anat/
+    │   │   │       │   ├── func/
+    │   │   │       │   └── fmap/
+    │   │   │       └── ...
+    │   │   └── derivatives/
+    │   │       ├── mriqc/               # QC reports for this study
+    │   │       └── fmriprep/            # Preprocessed data
+    │   ├── study-language/              # Another study
+    │   │   ├── rawdata/
+    │   │   └── derivatives/
     │   └── ...
-    ├── derivatives/
-    │   ├── mriqc/                       # QC reports
-    │   └── fmriprep/                    # Preprocessed data
     ├── code/                            # Processing scripts, heuristics
     │   ├── heudiconv-heuristic.py
     │   └── processing-pipeline.sh
@@ -175,8 +194,15 @@ lab-vault/                               # DataLad superdataset
     └── .datalad/
 ```
 
-Each major component (rawdata, each derivative, communications)
-is a nested DataLad subdataset,
+DICOMs arrive per session and land in `sourcedata/dicoms/`.
+The ReproIn study name in the DICOM headers
+routes converted data to the correct study under `studies/`.
+Derivatives can be produced per session as data arrives
+(fMRIPrep on a single session)
+and later aggregated into study-level summaries.
+
+Each study, each derivative, and the communications dataset
+are nested DataLad subdatasets,
 following [YODA principles]({{< ref "about#yoda-and-how-conserve-extends-it" >}}).
 
 ## Distribution and Privacy
@@ -198,26 +224,26 @@ See [Privacy and Access Control]({{< ref "about#privacy-and-access-control" >}})
 
 ## Workflow Overview
 
-```mermaid
+{{< mermaid >}}
 flowchart TD
     scanner[MRI Scanner] -->|DICOMs with ReproIn naming| dicoms[sourcedata/dicoms/]
     reprostim[ReproStim] -->|screen capture + QR timing| stim[sourcedata/reprostim/]
     birch[CurDes BIRCH] -->|event timing logs| events[sourcedata/birch/]
 
-    dicoms -->|HeuDiConv + ReproIn| bids[rawdata/ -- BIDS dataset]
-    stim -->|timing extraction + annotation| bids
-    events -->|convert to BIDS events.tsv| bids
+    dicoms -->|HeuDiConv + ReproIn routing| studies[studies/{study}/rawdata/]
+    stim -->|timing extraction + annotation| studies
+    events -->|convert to BIDS events.tsv| studies
 
-    bids -->|BIDS validator| validate{valid?}
+    studies -->|BIDS validator| validate{valid?}
     validate -->|yes| mriqc[MRIQC -- QC reports]
     validate -->|no| fix[Fix issues]
-    fix --> bids
+    fix --> studies
 
     mriqc -->|visual review| qc_gate{QC pass?}
     qc_gate -->|yes| fmriprep[fMRIPrep -- preprocessing]
     qc_gate -->|flag| review[Human review]
 
-    fmriprep --> derivatives[derivatives/fmriprep/]
+    fmriprep --> derivatives[studies/{study}/derivatives/]
 
     slack[Slack] -->|slackdump| comms[communications/slack/]
     gcal[Google Calendar] -->|export| calendar[calendar/]
@@ -227,7 +253,7 @@ flowchart TD
         dicoms
         stim
         events
-        bids
+        studies
         mriqc
         derivatives
         comms
@@ -236,8 +262,8 @@ flowchart TD
     end
 
     derivatives -->|datalad push| openneuro[OpenNeuro / DANDI]
-    bids -->|defaced| openneuro
-```
+    studies -->|defaced| openneuro
+{{< /mermaid >}}
 
 ## Relevant Tools
 

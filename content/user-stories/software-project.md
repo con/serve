@@ -140,7 +140,9 @@ only authorized team members can see them.
 In the vault, content from private repos carries
 `distribution-restrictions=private` metadata.
 
-## Vault Organization
+## Hypothetical Vault Organization
+
+> **TODO:** AI-generated layout, to be curated.
 
 ```
 project-vault/                           # DataLad superdataset
@@ -187,7 +189,7 @@ issues sync frequently, CI logs archive nightly.
 
 ## Workflow Overview
 
-```mermaid
+{{< mermaid >}}
 flowchart TD
     gh_org[GitHub Organization] -->|git mirror| repos[repos/]
     gh_org -->|git-bug bridge| issues[issues/]
@@ -214,7 +216,7 @@ flowchart TD
         forgejo
         auth
     end
-```
+{{< /mermaid >}}
 
 ## Relevant Tools
 
