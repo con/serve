@@ -2,3 +2,10 @@
 	path = themes/congo
 	url = https://github.com/jpanther/congo.git
 	branch = stable
+[submodule "projects/liab-conserve"]
+	path = projects/liab-conserve
+	url = ./projects/liab-conserve
+	datalad-id = 07884938-9363-4557-8e70-7984261dc577
+[submodule "projects/liab-deployments"]
+	path = projects/liab-deployments
+	url = https://hub.psychoinformatics.de/lab-in-a-box/liab-deployments.git
