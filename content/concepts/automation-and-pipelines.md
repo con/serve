@@ -364,6 +364,47 @@ The entire chain is re-executable via `datalad rerun`.
   vs. what requires human approval;
   how to encode these policies declaratively
 
+## Related Technology to Explore
+
+### Dagster
+
+[Dagster](https://github.com/dagster-io/dagster) is an open-source data orchestrator
+that models pipelines as graphs of **software-defined assets** --
+each asset declares its upstream dependencies and materializes a concrete artifact.
+This asset-centric model is a closer philosophical match to DataLad's dataset-centric worldview
+than traditional task-based orchestrators (Airflow, Prefect),
+because each node in the graph represents *data that exists*
+rather than *a task that runs*.
+Dagster's built-in lineage tracking, partitioning, and sensor-based triggering
+could complement `datalad run` provenance
+for orchestrating complex multi-dataset pipelines.
+
+### Metaxy
+
+[Metaxy](https://github.com/anam-org/metaxy) is a young project
+(originally built for Dagster) that defines data processing pipelines
+from tabular metadata -- each row in a TSV/CSV describes a unit of work
+with its inputs, parameters, and expected outputs.
+This per-row dependency model is potentially interesting for con/serve,
+where many datasets are tracked via `.tsv` manifests
+(e.g., file inventories, processing status tables)
+and pipeline steps often operate row-by-row
+(one subject, one video, one message channel per row).
+Under the hood, Metaxy uses [Narwhals](https://github.com/narwhals-dev/narwhals)
+(a lightweight compatibility layer providing a unified dataframe API
+across pandas, Polars, DuckDB, PyArrow, and others)
+and [Ibis](https://ibis-project.org/) for backend-agnostic query expressions,
+with DuckDB as one of the supported metadata stores.
+This is relevant because the vault's `.tsv` manifests
+could be queried directly via DuckDB
+(which reads TSV/CSV/Parquet natively),
+and a Narwhals-based abstraction avoids locking pipeline code
+into any single dataframe library.
+
+Metaxy is currently a single-developer project at an early stage,
+but the core idea -- **deriving a DAG from spreadsheet rows** --
+aligns with how vault operators already think about batch processing.
+
 ## See Also
 
 - [Metadata Extraction and Dependencies]({{< ref "metadata-extraction" >}}) -- dependency tracking and incremental recomputation for data summaries and derivatives
