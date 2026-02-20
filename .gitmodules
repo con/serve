@@ -4,7 +4,7 @@
 	branch = stable
 [submodule "projects/liab-conserve"]
 	path = projects/liab-conserve
-	url = ./projects/liab-conserve
+	url = https://github.com/con/serve-liab
 	datalad-id = 07884938-9363-4557-8e70-7984261dc577
 [submodule "projects/liab-deployments"]
 	path = projects/liab-deployments
