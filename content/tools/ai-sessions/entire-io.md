@@ -12,7 +12,7 @@ params:
   repo: "https://github.com/entireio/cli"
   homepage: "https://entire.io"
   issues: "https://github.com/entireio/cli/issues"
-  language: "TypeScript"
+  language: "Go"
   license: "MIT"
   maturity: "beta"
   last_verified: "2026-02"
@@ -78,14 +78,12 @@ without scanning every individual session branch.
 
 Entire.io supports multiple AI coding assistants:
 
-- **Claude Code** -- Captures sessions from Anthropic's CLI assistant.
-  Reads the JSONL transcripts stored in `~/.claude/projects/`
-  and archives them to shadow branches.
+- **Claude Code** -- Captures sessions from Anthropic's CLI assistant
+  via lifecycle hooks (pre/post prompt, session start/stop).
+- **Gemini CLI** -- Google's CLI coding assistant.
+- **OpenCode** -- Open-source AI coding CLI.
 - **Cursor** -- Captures AI interactions from Cursor's VS Code fork.
-  Integrates with Cursor's session storage to extract conversation data.
-- **Additional tools** -- The architecture is extensible;
-  any tool that produces structured session data can be supported
-  via adapter plugins.
+- **Additional tools** -- The architecture is extensible via agent adapters.
 
 This multi-tool support is particularly valuable for teams
 where different developers use different AI assistants.
@@ -215,6 +213,8 @@ To incorporate Entire.io into a DataLad workflow:
 
 ## See Also
 
+- [git-memento](../git-memento/) -- Lighter-touch approach using git notes instead of branches
+- [Git AI](../git-ai/) -- Line-level AI authorship attribution via git notes
 - [cctrace](../cctrace/) -- Lightweight alternative for Claude Code-only capture
 - [ccexport](../ccexport/) -- Export Claude Code transcripts to readable formats
 - [Claude Code Hooks](../claude-code-hooks/) -- Trigger Entire.io capture automatically

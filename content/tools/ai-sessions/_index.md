@@ -37,9 +37,22 @@ but these are not version-controlled and can be lost with a disk failure or OS r
 
 ## Tools Covered
 
+### Session Archival
+
 **[Entire.io](entire-io/)** -- Git-native session archival using shadow branches.
-Supports multiple AI tools (Claude Code, Cursor) with cross-session indexing
-and attribution tracking.
+Supports multiple AI tools (Claude Code, Gemini CLI, Cursor) with cross-session indexing,
+checkpoint rewind, and attribution tracking. Go CLI backed by $60M seed funding.
+
+**[git-memento](git-memento/)** -- Stores AI session transcripts as git notes on commits.
+The lightest-touch approach: notes are invisible by default, add no branches or files,
+and use native git primitives. Supports Codex and Claude Code. F# with NativeAOT compilation.
+
+**[Git AI](git-ai/)** -- Line-level AI authorship attribution.
+Tracks exactly which lines were AI-written vs human-authored, stored as git notes.
+Supports 10+ agents. Provides `git-ai blame` as an AI-aware replacement for `git blame`.
+Rust CLI with IDE decorations and enterprise dashboards.
+
+### Session Capture and Export
 
 **[cctrace](cctrace/)** -- Lightweight Claude Code conversation capture.
 Reads JSONL transcripts and produces structured output for archival.
@@ -55,7 +68,7 @@ PreCompact, Stop, and SessionEnd events can trigger automatic session archival.
 
 ## Common Patterns
 
-AI session archival tools generally follow one of two strategies:
+AI session archival tools generally follow one of three strategies:
 
 1. **Post-hoc export** -- Read session data from the AI tool's local storage
    (e.g., `~/.claude/projects/`) and convert it to an archival format.
@@ -65,8 +78,13 @@ AI session archival tools generally follow one of two strategies:
    as they happen, storing them directly in git.
    Entire.io and Claude Code Hooks take this approach.
 
-The ideal workflow combines both:
+3. **Commit-time attachment** -- Record session context at commit time
+   using native git metadata (notes).
+   git-memento and Git AI take this approach.
+
+The ideal workflow combines several:
 lifecycle hooks for real-time capture during active development,
+commit-time notes for lightweight provenance,
 and export tools for backfilling historical sessions.
 
 ## Related
