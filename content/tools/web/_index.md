@@ -31,6 +31,12 @@ ideal for preserving specific pages or articles.
 to capture JavaScript-heavy sites that static crawlers cannot handle,
 producing standards-compliant WARC archives.
 
+**Recovery from the Wayback Machine** --
+[Wayback-Archive](wayback-archive/) reconstructs a usable offline copy of a
+site that is no longer live, by walking an Internet Archive snapshot,
+falling back to nearby timestamps for missing assets, and rewriting Wayback
+URLs to relative paths.
+
 ## Integration with git-annex
 
 Web archives can be large (especially WARC files from full-site crawls),
