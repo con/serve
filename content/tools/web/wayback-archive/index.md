@@ -157,11 +157,57 @@ SNAPSHOT_TIMEOUT=600 MAX_FILES_PER_SNAPSHOT=10 \
 
 Each successful snapshot becomes a `[DATALAD RUNCMD]` commit whose
 message embeds the exact recovery command as JSON, so any single point
-in the timeline is independently reproducible.
+in the timeline is independently reproducible. The commits have a
+deliberate split identity:
 
-This is purely a wrapper-script pattern today: it would be a clean
-upstream feature to expose `WAYBACK_URL_RANGE` / `WAYBACK_FROM` /
-`WAYBACK_TO` / `WAYBACK_COLLAPSE` env vars and an internal CDX call.
+- **Author** is `Internet Archive <ia@example.com>` with the *capture
+  date* as author date -- they are the actual source of the content.
+- **Committer** is whoever ran the recovery script, with the current
+  wall clock as commit date -- they actually performed the commit.
+
+That split lets `git log --until=2020` (uses author date) and `git
+blame site/index.html` resolve to the *archive era* the content came
+from, while `git log --committer=you@…` shows when *you* did the
+recovery. `git log --author='Internet Archive'` selects only the
+capture commits, distinct from any subsequent edits you make on top.
+
+A live demo dataset built with this exact wrapper is available at
+[github.com/con/serve-wayback-archive-demo](https://github.com/con/serve-wayback-archive-demo).
+It contains several branches off a common `text2git` bootstrap, each
+showing a different kind of result:
+
+- `master` -- early single-day demo (two captures of `neuro.debian.net`).
+- `more` -- monthly attempts across 2025 on `neuro.debian.net` (mix of
+  successes, byte-identical-to-previous "unchanged" snapshots, and
+  IA-empty failures).
+- `full-history` -- yearly attempts 2009-2026 on `neuro.debian.net`
+  (7 captured, 3 unchanged, 8 IA-empty).
+- `con` -- yearly captures of `centerforopenneuroscience.org` 2016-2025,
+  all 10 successful.
+- `con-full` -- *every* CDX capture of `centerforopenneuroscience.org`
+  2016-2025 (68 attempted, 48 captured, 8 unchanged, 12 IA-empty).
+  Dense enough that `git log --since=2018-01 --until=2019-01
+  --author='Internet Archive'` returns a real-looking sequence of small
+  edits and `git blame site/index.html` attributes each line to the
+  capture date it first appeared.
+
+This is purely a wrapper-script pattern today. Two clean upstream
+features would replace the wrapper with first-class behavior:
+
+1. **CDX-driven iteration.** Expose `WAYBACK_URL_RANGE` /
+   `WAYBACK_FROM` / `WAYBACK_TO` / `WAYBACK_COLLAPSE` env vars and have
+   the tool query CDX itself, replacing the shell loop.
+2. **Selective `annex addurl` by size or pattern.** Today every asset
+   is downloaded eagerly, even multi-hundred-MB binaries (we hit
+   650 MB `.ova` VM images on `neuro.debian.net`). For files above a
+   configurable threshold (or matching a glob), the tool could instead
+   register the Wayback Machine URL via `git annex addurl --relaxed`
+   and skip the bytes -- leaving an annex symlink pointing at IA. The
+   resulting tree is browsable; `git annex get <file>` materializes on
+   demand from the Internet Archive when (and only when) the content is
+   actually needed. This makes full-history archival of asset-heavy
+   sites tractable on disk, and removes the redundant re-download cost
+   when consecutive snapshots share large unchanged binaries.
 
 ## AI Readiness
 

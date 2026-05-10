@@ -139,7 +139,16 @@ for row in "${ROWS[@]}"; do
     # slow Wayback response can't stall the entire timeline.
     # --explicit: only the listed --output paths are expected to change.
     # --kill-after sends SIGKILL if SIGTERM is ignored.
-    if GIT_AUTHOR_DATE="$iso" GIT_COMMITTER_DATE="$iso" \
+    #
+    # Author identity is set to Internet Archive with the capture date as
+    # author date (the IA is the source of the content), while the
+    # committer remains the user running the script with their current
+    # clock (they did the commit). So `git log --author='Internet Archive'`
+    # vs `git log --committer=...` lets you tell capture provenance from
+    # recovery provenance.
+    if GIT_AUTHOR_NAME='Internet Archive' \
+       GIT_AUTHOR_EMAIL='ia@example.com' \
+       GIT_AUTHOR_DATE="$iso" \
        datalad -C "$DSDIR" run \
             -m "$msg" \
             --explicit \
