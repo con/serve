@@ -130,7 +130,17 @@ echo "Got ${#ROWS[@]} snapshot(s) to process"
 #    tree and repopulates it from that timestamp. Backdate the resulting
 #    commit to the actual capture time so `git log --date=iso` reads as
 #    a real timeline.
-declare -i ok=0 unchanged=0 skipped=0
+declare -i ok=0 unchanged=0 skipped=0 resumed=0
+
+# Pre-load existing snapshot subjects so we can skip captures already
+# committed on this branch. Lets the script be re-run after a session
+# interruption without redoing successful work.
+declare -A already_done=()
+while IFS= read -r subj; do
+    already_done["$subj"]=1
+done < <(git -C "$DSDIR" log --pretty=%s HEAD 2>/dev/null \
+            | grep -E "^snapshot [0-9]{4}-[0-9]{2}-[0-9]{2}T" || true)
+
 for row in "${ROWS[@]}"; do
     ts="${row%%$'\t'*}"
     orig="${row#*$'\t'}"
@@ -141,6 +151,12 @@ for row in "${ROWS[@]}"; do
 
     wb_url="https://web.archive.org/web/${ts}/${orig}"
     msg="snapshot ${iso} of ${SITE}"
+
+    if [[ -n "${already_done[$msg]:-}" ]]; then
+        echo "resume ${ts}: snapshot already on branch; skipping"
+        resumed+=1
+        continue
+    fi
     max_files_env=""
     [[ -n "${MAX_FILES_PER_SNAPSHOT:-}" ]] \
         && max_files_env="MAX_FILES=${MAX_FILES_PER_SNAPSHOT} "
@@ -216,6 +232,6 @@ for row in "${ROWS[@]}"; do
 done
 
 echo
-echo "=== done: ok=${ok} unchanged=${unchanged} skipped=${skipped} ==="
+echo "=== done: ok=${ok} unchanged=${unchanged} skipped=${skipped} resumed=${resumed} ==="
 echo "Browse the timeline:"
 echo "  git -C '$DSDIR' log --date=iso --pretty='%h %ad %s'"
