@@ -309,7 +309,15 @@ def build_wacz(
             str(pages_path),
         ]
         if pages_index:
-            main = max(pages_index, key=lambda p: p["ts"])
+            # Prefer the root URL ("/") for the WACZ's main page so a
+            # bare ``?source=...`` link lands on the homepage rather
+            # than a random subpage that happens to sort last.
+            latest_ts = max(p["ts"] for p in pages_index)
+            at_latest = [p for p in pages_index if p["ts"] == latest_ts]
+            main = next(
+                (p for p in at_latest if p["url"].rstrip("/").count("/") <= 2),
+                at_latest[0],
+            )
             cmd += [
                 "--url", main["url"],
                 "--date", main["ts"],
