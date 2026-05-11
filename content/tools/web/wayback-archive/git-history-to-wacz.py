@@ -54,6 +54,17 @@ from typing import Iterable
 
 _TITLE_RE = re.compile(rb"<title[^>]*>([^<]+)</title>", re.IGNORECASE)
 
+# Smallest valid PNG: 1x1 transparent. wabac.js's pages-list renderer
+# hard-codes ``<replay-prefix>/<ts>id_/urn:thumbnail:<url>`` as the
+# thumbnail src for every entry; on a 404 it gracefully falls back to
+# a favicon, but the failed fetches show up as console errors. Emitting
+# this stub as a WARC ``response`` record per entry page suppresses
+# the noise without bloating the WACZ (190 entries x ~70 bytes ~ 13 KB).
+import base64 as _b64
+_THUMBNAIL_PNG = _b64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkqGcAAAEcAEt2c0WiAAAAAElFTkSuQmCC"
+)
+
 
 def extract_title(body: bytes) -> str | None:
     """Return the page title from an HTML body, or None if not found."""
@@ -242,6 +253,30 @@ def write_warc_for_commit(
                     "title": label,
                 }
             )
+
+            # Emit a placeholder thumbnail WARC record so wabac.js's
+            # hard-coded ``urn:thumbnail:<url>`` fetch resolves instead
+            # of 404-flooding the console.
+            thumb_uri = f"urn:thumbnail:{url}"
+            thumb_headers = StatusAndHeaders(
+                "200 OK",
+                [
+                    ("Content-Type", "image/png"),
+                    ("Content-Length", str(len(_THUMBNAIL_PNG))),
+                    ("Date", http_date),
+                ],
+                protocol="HTTP/1.1",
+            )
+            thumb_record = writer.create_warc_record(
+                uri=thumb_uri,
+                record_type="response",
+                payload=io.BytesIO(_THUMBNAIL_PNG),
+                length=len(_THUMBNAIL_PNG),
+                http_headers=thumb_headers,
+                warc_headers_dict=OrderedDict([("WARC-Date", warc_date)]),
+            )
+            writer.write_record(thumb_record)
+            written += 1
     return written
 
 
