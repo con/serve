@@ -41,6 +41,7 @@ import argparse
 import io
 import mimetypes
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -50,6 +51,20 @@ from datetime import datetime, timezone
 from email.utils import format_datetime
 from pathlib import Path
 from typing import Iterable
+
+_TITLE_RE = re.compile(rb"<title[^>]*>([^<]+)</title>", re.IGNORECASE)
+
+
+def extract_title(body: bytes) -> str | None:
+    """Return the page title from an HTML body, or None if not found."""
+    m = _TITLE_RE.search(body)
+    if not m:
+        return None
+    try:
+        title = m.group(1).decode("utf-8", errors="replace").strip()
+    except Exception:
+        return None
+    return title or None
 
 from warcio.warcwriter import WARCWriter
 from warcio.statusandheaders import StatusAndHeaders
@@ -212,12 +227,19 @@ def write_warc_for_commit(
         writer.write_record(record)
         written += 1
 
-        if site_rel == "index.html" or site_rel.endswith("/index.html"):
+        # Surface every captured HTML page (not just index.html) in
+        # pages.jsonl so ReplayWeb.page's Pages view and search can
+        # find subpages like ``whoweare.html``. Title is the actual
+        # ``<title>`` from the snapshot when available; otherwise a
+        # generated label keyed on URL + capture time.
+        if ctype.startswith("text/html"):
+            html_title = extract_title(body)
+            label = html_title or f"{site} {site_rel} @ {warc_date[:10]}"
             pages_index.append(
                 {
                     "url": url,
                     "ts": warc_date,
-                    "title": f"{site} @ {warc_date}",
+                    "title": label,
                 }
             )
     return written
