@@ -1,0 +1,27 @@
+# Dependencies for the Wayback-Archive tooling under
+# ``content/tools/web/wayback-archive/``. Install into the project's
+# ``.venv`` (created e.g. with ``uv venv``) and activate it before
+# invoking the scripts:
+#
+#   uv venv
+#   uv pip install -r content/tools/web/wayback-archive/requirements.txt
+#   . .venv/bin/activate
+#   ./content/tools/web/wayback-archive/wayback-to-datalad.sh ...
+#
+# The ``datalad run`` records embedded in capture commits reference
+# the activate script at a relative path, so the same provenance is
+# reproducible from a fresh clone as long as the venv lives at the
+# project root.
+
+# Wayback-Machine recovery
+wayback-archive
+
+# DataLad provenance + git-annex orchestration
+datalad
+
+# WARC / WACZ producers used by git-history-to-wacz.py
+warcio
+wacz
+# py-wacz 0.5.0 still imports ``pkg_resources``, removed from
+# setuptools >= 81. Pin the legacy setuptools for now.
+setuptools<81

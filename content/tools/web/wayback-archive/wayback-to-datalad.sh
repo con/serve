@@ -44,6 +44,15 @@
 #                           must be generous.
 #   TREE                    Subdir within the dataset that holds the
 #                           recovered site. Default: site
+#   VENV_ACTIVATE           Path to a ``activate`` script for a Python
+#                           venv (relative to the dataset's working
+#                           directory, e.g. ``../../.venv/bin/activate``
+#                           when running from a subdataset rooted two
+#                           levels deep). When set, the inner ``bash -c``
+#                           recorded by ``datalad run`` sources this
+#                           script so the embedded provenance is
+#                           self-contained -- anyone re-running the
+#                           commit gets the same Python interpreter.
 #
 # Exit codes:
 #   0 on success (some snapshots may be skipped); 1 on usage / setup error.
@@ -57,6 +66,11 @@ TO="${5-}"
 LIMIT="${6-}"
 TREE="${TREE:-site}"
 SNAPSHOT_TIMEOUT="${SNAPSHOT_TIMEOUT:-600}"
+VENV_ACTIVATE="${VENV_ACTIVATE:-}"
+venv_prefix=""
+if [[ -n "$VENV_ACTIVATE" ]]; then
+    venv_prefix=". ${VENV_ACTIVATE} && "
+fi
 
 command -v datalad >/dev/null || { echo "datalad not found in PATH" >&2; exit 1; }
 command -v jq      >/dev/null || { echo "jq not found in PATH"      >&2; exit 1; }
@@ -154,7 +168,7 @@ for row in "${ROWS[@]}"; do
             --explicit \
             --output "$TREE" \
             -- \
-            bash -c "rm -rf '$TREE' && mkdir -p '$TREE' && \
+            bash -c "${venv_prefix}rm -rf '$TREE' && mkdir -p '$TREE' && \
                 ${max_files_env}WAYBACK_URL='$wb_url' OUTPUT_DIR='$TREE' \
                 timeout --kill-after=10 ${SNAPSHOT_TIMEOUT} \
                 python3 -m wayback_archive.cli"
