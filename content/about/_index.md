@@ -222,24 +222,40 @@ The YODA nesting model composes them into a coherent whole.
 
 ## STAMPED Principles
 
-**[STAMPED](https://github.com/myyoda/principles-paper/blob/main/proposals/stamped-acronym.md)**
-provides the guiding framework,
-building on YODA philosophy:
+**[STAMPED](https://stamped-principles.org/)**
+provides the guiding framework, building on YODA philosophy.
+See also the
+[STAMPED checklist](https://checklist.stamped-principles.org/)
+for a compliance-style self-assessment
+and the
+[STAMPED examples](https://examples.stamped-principles.org/)
+gallery for concrete research objects illustrating the principles.
 
-| Letter | Principle | Meaning |
-|---|---|---|
-| **S** | Self-contained | Research objects are complete retrieval units -- no external lookups required |
-| **T** | Tracked | All assets under version control using content-addressed systems (git/git-annex) |
-| **A** | Actionable | Cross-cutting quality: every dimension is operationally useful, not merely documented |
-| **M** | Modular | Independently versioned, composable components |
-| **P** | Provenance-recorded | Modifications annotated in version history; code-driven provenance is programmatic |
-| **E** | Ephemeral | Computing occurs in throwaway environments, validating containment and portability |
-| **D** | Deployable | Explicitly specified, machine-reproducible environments that transfer across systems |
+| Letter | Property       | Principle        | Meaning |
+|--------|----------------|------------------|---------|
+| **S**  | Self-contained | Self-containment | Everything needed is gathered under one boundary; external dependencies are explicitly documented |
+| **T**  | Tracked        | Tracking         | The state and provenance of all components is recorded (content-addressed version control, programmatic provenance) |
+| **A**  | Actionable     | Actionability    | Components carry machine-actionable information to reproduce content -- not merely instructions for a human |
+| **M**  | Modular        | Modularity       | All modules are independent and composable, with explicit boundaries between them |
+| **P**  | Portable       | Portability      | The research object can be moved to different environments while retaining its STAMPED properties |
+| **E**  | Ephemeral      | Ephemerality     | Procedural execution is performed within a throwaway environment |
+| **D**  | Distributable  | Distributability | All modules and procedures are shareable externally in a persistent, retrievable state |
+
+The STAMPED acronym spells out the **properties** that a research object
+exhibits (Self-contained, Tracked, Actionable, ...);
+each property corresponds to a **principle** that names the underlying
+discipline (Self-containment, Tracking, Actionability, ...).
+Throughout this site we use the principle form
+(e.g. *Portability*) when referring to the discipline itself,
+and the property form (e.g. *Portable*) when describing a particular
+research object that exhibits it.
 
 Self-containment (**S**) is the foundation:
 a dataset must carry everything needed to understand and use it.
-The four core dimensions (**T**, **M**, **P**, **D**) are structural principles.
-Ephemerality (**E**) is a validation discipline --
+The four core dimensions -- Tracking (**T**), Modularity (**M**),
+Portability (**P**), and Distributability (**D**) -- are structural principles
+describing how that boundary is versioned, organized, transferred, and shared.
+Ephemerality (**E**) is an operationalization and validation discipline --
 if your analysis runs in a throwaway environment,
 it proves the other principles hold.
 Actionability (**A**) cuts across all dimensions:

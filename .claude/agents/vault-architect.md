@@ -32,7 +32,10 @@ built on git-annex, DataLad, and Forgejo-aneksajo.
 ### Principles
 - **YODA**: one dataset per component, nested composition, clean separation of
   code/inputs/outputs, machine-readable provenance
-- **STAMPED**: Self-contained, Tracked, Actionable, Modular, Provenance-recorded, Ephemeral, Deployable
+- **STAMPED**: Self-containment, Tracking, Actionability, Modularity, Portability, Ephemerality,
+  Distributability (the corresponding properties of a research object are
+  Self-contained, Tracked, Actionable, Modular, Portable, Ephemeral, Distributable --
+  the latter spell out the STAMPED mnemonic)
 - **BIDS entity-label paths**: `key-value` (or `key=value` hive) directory naming
   for self-describing, queryable hierarchies
 - **Archive aggressively, distribute selectively**: capture everything,
