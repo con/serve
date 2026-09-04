@@ -108,3 +108,11 @@ git-bug's data is structured text throughout:
 No transcription or format conversion is needed.  An LLM can read the JSON
 export and produce useful summaries, triage suggestions, or cross-repository
 analyses immediately.
+
+## See Also
+
+- [Git Refs as Side-Channel Databases]({{< ref "concepts/git-refs-side-channels" >}}) --
+  git-bug's `refs/bugs/` compared with the `git-annex` branch, git notes,
+  and Entire's checkpoint branch
+- [dandi-bib sync workflow](https://github.com/dandi/dandi-bib/blob/master/.github/workflows/sync-git-bug.yml) --
+  a GitHub Action mirroring issues into `refs/bugs/*` on a schedule

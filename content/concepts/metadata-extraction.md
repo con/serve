@@ -434,6 +434,9 @@ and *at what granularity*.
   operational knowledge that consumes data characteristics
 - [Vault Organization]({{< ref "vault-organization" >}}) --
   directory layout conventions that enable the extraction pattern
+- [Git Refs as Side-Channel Databases]({{< ref "git-refs-side-channels" >}}) --
+  where metalad keeps extracted metadata (`refs/datalad/*`) and how that
+  compares with in-tree summary tables
 - [datalad-metalad](https://github.com/datalad/datalad-metalad) --
   the extraction framework
 - [DataLad Registry](https://registry.datalad.org/) --

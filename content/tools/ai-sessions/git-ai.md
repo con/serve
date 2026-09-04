@@ -148,3 +148,4 @@ for interoperability.
 - [git-memento](../git-memento/) -- Conversation-level archival via git notes
 - [Entire.io](../entire-io/) -- Full session archival with shadow branches
 - [Agent Trace spec](https://github.com/cursor/agent-trace) -- Open attribution standard
+- [Git Refs as Side-Channel Databases]({{< ref "concepts/git-refs-side-channels" >}}) -- `refs/notes/ai` in the context of the general pattern

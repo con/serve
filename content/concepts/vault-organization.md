@@ -343,6 +343,8 @@ The options under consideration include:
   git-bug already uses `refs/bugs/` within the repo;
   the same pattern could extend to `refs/tinuous/...`, `refs/discussions/...`.
   Most self-contained, but requires tooling support.
+  See [Git Refs as Side-Channel Databases]({{< ref "git-refs-side-channels" >}})
+  for how existing tools use such namespaces.
 - **Git namespaces** (`GIT_NAMESPACE`) --
   partitions refs and shares the object store,
   so a clone only fetches the requested namespace.
@@ -358,6 +360,7 @@ see [bids-specification#2191](https://github.com/bids-standard/bids-specificatio
 ## See Also
 
 - [Data-Visualization Separation]({{< ref "data-visualization-separation" >}}) -- how the directory layout enables hierarchical summarization and use-case-appropriate tooling
+- [Git Refs as Side-Channel Databases]({{< ref "git-refs-side-channels" >}}) -- keeping complementary information in git refs rather than in the tree
 - [Ingestion Patterns]({{< ref "ingestion-patterns" >}}) -- how data enters the vault
 - [Conservation to External Resources]({{< ref "conservation-to-external" >}}) -- how data leaves the vault
 - [Domain Extensions]({{< ref "domain-extensions" >}}) -- domain-specific internal structures within subdatasets
