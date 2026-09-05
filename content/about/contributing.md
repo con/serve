@@ -14,7 +14,8 @@ that is not yet cataloged here, we welcome contributions.
 
 ### 1. Choose the right section
 
-Place your tool page in the appropriate subdirectory under `content/tools/`:
+Place your tool page in the appropriate subdirectory under `content/tools/`
+(self-hosted services go under `content/infrastructure/` instead):
 
 | Section | Artifact type |
 |---|---|
@@ -76,15 +77,15 @@ params:
 | `date` | Date the entry was created (YYYY-MM-DD) |
 | `description` | One-line description |
 | `summary` | Brief summary for listing pages |
-| `categories` | One of: Communications, Media, Code Artifacts, Cloud Storage, Publications, Web, AI Sessions |
+| `categories` | One of: Communications, Media, Code Artifacts, Cloud Storage, Publications, Web, AI Sessions (or Infrastructure for service pages) |
 | `integrations` | One or more of: `native-datalad`, `git-annex`, `git-only`, `external` |
 | `ai_readiness` | One or more of: `ai-ready`, `ai-partial`, `ai-manual` |
 | `params.repo` | Source code repository URL |
 | `params.homepage` | Project homepage or documentation URL (can be same as repo) |
 | `params.issues` | Bug tracker / issue tracker URL |
 | `params.language` | Primary programming language |
-| `params.license` | SPDX license identifier |
-| `params.maturity` | One of: `stable`, `beta`, `alpha`, `concept` |
+| `params.license` | [SPDX license identifier](https://spdx.org/licenses/) (e.g. `MIT`, `GPL-3.0-only`, `AGPL-3.0-or-later`) |
+| `params.maturity` | One of: `stable`, `beta`, `alpha`, `concept` (`concept` for approaches with no single tool) |
 | `params.last_verified` | When URLs and content were last verified (YYYY-MM) |
 
 **Optional fields:**
@@ -99,35 +100,50 @@ params:
 
 ### 5. Write the content
 
-Structure the page body with these sections (adapt as needed):
+Start the body with a short lead paragraph (no heading) saying what the tool
+does, who maintains it, and why it matters for archival.
+Then use these sections, in this order, adapting as needed:
 
 ```markdown
-## Overview
+## Key Features
 
-What the tool does, who maintains it, and why it matters for archival.
+What the tool captures and how it stores it.
 
 ## Installation
 
 How to install the tool. Prefer package managers and reproducible methods.
 
-## Usage with git-annex / DataLad
+## Usage
 
-How to integrate the tool's output into a git-annex or DataLad repository.
-Include concrete commands and examples.
+The commands a reader needs to run it, taken from upstream documentation.
+
+## git-annex / DataLad Integration
+
+**Integration level: git-annex.**
+
+How the tool's output fits into a git-annex or DataLad repository.
+Describe only what has actually been tried; if there is no established
+workflow yet, say so rather than inventing one.
 
 ## AI Readiness
+
+**Level: ai-partial.**
 
 What the output looks like from an LLM's perspective.
 What processing (if any) is needed to make it consumable?
 
 ## Limitations
 
-Known limitations, caveats, and workarounds.
+Known limitations and caveats.
 
 ## See Also
 
 Links to related tools, upstream documentation, and relevant concepts pages.
+Use `{{</* ref "page-name" */>}}` for internal links.
 ```
+
+The bold level lines repeat the front matter values so the classification
+is visible on the page itself.
 
 ### 6. Choosing taxonomy values
 
@@ -150,8 +166,7 @@ might be `["ai-ready", "ai-manual"]`).
 
 ### 7. Verify URLs
 
-All URLs in `params` are checked by CI.
-Before submitting, verify that:
+There is no automated URL check yet, so before submitting verify by hand that:
 
 - `repo` points to an active, public repository
 - `homepage` resolves and contains relevant documentation
@@ -162,4 +177,5 @@ Before submitting, verify that:
 
 Open a pull request against the
 [con/serve repository](https://github.com/con/serve).
-The CI pipeline will validate front matter schema and check all URLs.
+CI currently only builds and deploys the site; front matter and URLs are
+reviewed by hand.

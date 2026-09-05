@@ -45,7 +45,7 @@ shared team dashboards. The source session files (e.g. Claude Code's JSONL in
 ## Search and Analysis
 
 - Full-text search across all session content, any agent
-- Semantic search (vector embeddings, self-hosted)
+- Semantic search (opt-in, via any OpenAI-compatible embeddings endpoint)
 - Token and cost analytics by agent, model, project, or time range
 - "Recent Edits" feed linking sessions to the files they touched
 - Session export to HTML or GitHub Gist
@@ -56,7 +56,9 @@ AgentsView exposes an MCP server so AI agents can query session history
 programmatically -- enabling workflows where an agent reviews what a previous
 session did before continuing work.
 
-## Relevance to Archival
+## git-annex / DataLad Integration
+
+**Integration level: external.**
 
 AgentsView is primarily an analytics and search tool rather than an archival
 system in the preservation sense -- it does not version the session data or
@@ -67,14 +69,20 @@ which is a prerequisite for deciding what is worth archiving into a DataLad
 dataset.
 
 The session files AgentsView indexes -- Claude Code JSONL under
-`~/.claude/projects/`, Cursor logs under `~/.cursor/`, etc. -- are the actual
-preservation targets. Tools like [ccexport](../ccexport/) and
-[cctrace](../cctrace/) handle extracting and converting those files for
+`~/.claude/projects/`, Cursor logs under `~/.cursor/projects/`, etc. -- are the actual
+preservation targets. Tools like [ccexport]({{< ref "ccexport" >}}) and
+[cctrace]({{< ref "cctrace" >}}) handle extracting and converting those files for
 archival; AgentsView handles finding and understanding them at scale.
+
+## AI Readiness
+
+**Level: ai-ready.**
+
+The indexed content is the agents' own session transcripts (Claude Code JSONL, Cursor logs, and so on) -- structured text that an LLM can read directly. AgentsView adds full-text and semantic search plus an MCP server, so an agent can query what earlier sessions did without any conversion step.
 
 ## See Also
 
-- [cctrace](../cctrace/) -- lightweight Claude Code session capture
-- [ccexport](../ccexport/) -- converts Claude Code JSONL to markdown/JSON for archival
-- [entire-io](../entire-io/) -- git-native session archival with shadow branches
-- [roborev](../roborev/) -- continuous code review database for AI-generated commits
+- [cctrace]({{< ref "cctrace" >}}) -- lightweight Claude Code session capture
+- [ccexport]({{< ref "ccexport" >}}) -- converts Claude Code JSONL to markdown/JSON for archival
+- [entire-io]({{< ref "entire-io" >}}) -- git-native session archival as checkpoint refs
+- [roborev]({{< ref "roborev" >}}) -- continuous code review database for AI-generated commits

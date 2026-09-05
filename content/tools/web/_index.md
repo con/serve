@@ -19,9 +19,12 @@ and archiving it into git or git-annex repositories.
 
 ## Approaches
 
-**Full-site archival** -- Tools like [ArchiveBox](archivebox/) and
-[HTTrack](httrack/) crawl entire websites and preserve them
-as self-contained archives (WARC, static HTML, or single-file snapshots).
+**Site mirroring** -- [HTTrack](httrack/) crawls entire websites into
+browsable directory trees.
+
+**Bulk URL archival** -- [ArchiveBox](archivebox/) takes lists of URLs
+(bookmarks, feeds, history) and saves each in several formats at once
+(WARC, PDF, screenshot, single-file HTML).
 
 **Single-page capture** -- [SingleFile](singlefile/) captures individual pages
 as self-contained HTML files with all resources inlined,

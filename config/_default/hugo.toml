@@ -25,3 +25,15 @@ summaryLength = 0
   integration = "integrations"
   ai_readiness = "ai_readiness"
   standard = "standards"
+
+# Agent definitions live in .claude/agents/ (single source of truth) and are
+# published under /concepts/agents/. Hugo does not follow symlinks in
+# content/, so mount the directory instead.
+[module]
+  [[module.mounts]]
+    source = "content"
+    target = "content"
+  [[module.mounts]]
+    source = ".claude/agents"
+    target = "content/concepts/agents"
+    excludeFiles = ["README.md"]

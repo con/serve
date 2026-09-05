@@ -26,13 +26,18 @@ CrossRef, OpenCitations, DataCite, and OpenAlex.
 
 **PDF Acquisition** --
 Obtaining full-text PDFs through legal open-access channels
-(Unpaywall, publisher OA repositories, preprint servers)
+(currently Unpaywall, in citations-collector)
 and archiving them with provenance metadata in git-annex.
 
 **Reference Management** --
 Synchronizing curated collections with reference managers like
 [Zotero](zotero/) for collaborative bibliography management,
 BetterBibTeX export, and integration with writing workflows.
+
+**Local Document Stores** --
+[docbank](docbank/) keeps PDFs, images, and text files in a content-addressed
+local catalog with full-text search -- a document access layer rather than
+a citation manager, and independent of git-annex.
 
 ## Why Version-Control References?
 

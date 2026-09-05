@@ -22,8 +22,6 @@ params:
       url: "https://github.com/ReproNim/containers"
 ---
 
-## Overview
-
 [datalad-container](https://github.com/datalad/datalad-container) is a DataLad extension that brings computational containers (Docker, Singularity/Apptainer) into the DataLad dataset management framework. It allows you to register container images as part of a dataset, version-control them alongside data, and execute analyses inside those containers with full provenance tracking.
 
 The core insight is that reproducible science requires archiving not just data but also the **execution environment**. A neuroimaging analysis that worked in 2024 may not work in 2027 if the software versions have changed. By storing container images in git-annex alongside the data they process, datalad-container ensures the complete computational context is preserved.

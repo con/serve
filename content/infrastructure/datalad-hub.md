@@ -9,15 +9,13 @@ integrations: ["native-datalad"]
 ai_readiness: ["ai-partial"]
 params:
   homepage: "https://hub.datalad.org"
-  repo: "https://codeberg.org/matrss/forgejo-aneksajo"
-  issues: "https://codeberg.org/matrss/forgejo-aneksajo/issues"
+  repo: "https://codeberg.org/forgejo-aneksajo/forgejo-aneksajo"
+  issues: "https://codeberg.org/forgejo-aneksajo/forgejo-aneksajo/issues"
   language: "Go"
-  license: "MIT"
+  license: "GPL-3.0-or-later"
   maturity: "beta"
   last_verified: "2026-02"
 ---
-
-## Overview
 
 [DataLad Hub](https://hub.datalad.org) is a public deployment of [Forgejo-Aneksajo]({{< ref "forgejo-aneksajo" >}}) -- the Forgejo fork with native git-annex support. It provides a web interface for publishing, browsing, cloning, and collaborating on DataLad datasets without the need to deploy and maintain your own infrastructure.
 
@@ -36,9 +34,9 @@ DataLad Hub is not a separate tool or codebase -- it is an **instance** of Forge
 **Integration level: native-datalad.**
 
 ```bash
-# Create a sibling on DataLad Hub
-datalad create-sibling-gogs --name hub \
-    --api https://hub.datalad.org/api/v1 \
+# Create a sibling on DataLad Hub (Forgejo is Gitea-API compatible)
+datalad create-sibling-gitea --name hub \
+    --api https://hub.datalad.org \
     --credential datalad-hub-token
 
 # Push dataset (git refs + annexed content)

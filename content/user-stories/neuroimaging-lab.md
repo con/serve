@@ -152,16 +152,17 @@ The vault groups data by study under `studies/`,
 with shared sourcedata at the top level
 and per-study BIDS datasets and derivatives below.
 The BIDS-converted data lives under `sourcedata/bids-raw/`
-following the BIDS convention for raw data placement
-(see [bids-specification#2191](https://github.com/bids-standard/bids-specification/pull/2191)
-for related discussions on directory naming).
+(a placement that predates the BIDS "study dataset" layout of
+[bids-specification#2191](https://github.com/bids-standard/bids-specification/pull/2191),
+which puts raw BIDS data in a top-level `rawbids/` directory instead).
+`//` marks [subdataset boundaries]({{< ref "vault-organization#dataset-nesting-notation" >}}).
 Preprocessing may happen per recording session
 (since sessions arrive incrementally from the scanner),
 with study-level aggregation happening later.
 
 ```
-lab-vault/                               # DataLad superdataset
-    ├── sourcedata/                      # Raw acquisitions (all studies)
+lab-vault//                              # DataLad superdataset
+    ├── sourcedata//                     # Raw acquisitions (all studies)
     │   ├── dicoms/                      # Raw DICOMs (ReproIn naming)
     │   │   ├── {date}/{session}/        # Per-session, routed by ReproIn study name
     │   │   └── ...
@@ -171,8 +172,8 @@ lab-vault/                               # DataLad superdataset
     │   │   └── {date}/{session}/
     │   └── physio/                      # Physiological recordings (if any)
     ├── studies/                          # Per-study BIDS datasets
-    │   ├── study-taskswitch/            # One study
-    │   │   ├── sourcedata/bids-raw/    # BIDS-converted (aggregated from sourcedata)
+    │   ├── study-taskswitch//           # One study
+    │   │   ├── sourcedata/bids-raw//   # BIDS-converted (aggregated from sourcedata)
     │   │   │   ├── dataset_description.json
     │   │   │   ├── participants.tsv
     │   │   │   └── sub-01/
@@ -182,20 +183,19 @@ lab-vault/                               # DataLad superdataset
     │   │   │       │   └── fmap/
     │   │   │       └── ...
     │   │   └── derivatives/
-    │   │       ├── mriqc/               # QC reports for this study
-    │   │       └── fmriprep/            # Preprocessed data
-    │   ├── study-language/              # Another study
-    │   │   ├── sourcedata/bids-raw/
+    │   │       ├── mriqc//              # QC reports for this study
+    │   │       └── fmriprep//           # Preprocessed data
+    │   ├── study-language//             # Another study
+    │   │   ├── sourcedata/bids-raw//
     │   │   └── derivatives/
     │   └── ...
     ├── code/                            # Processing scripts, heuristics
     │   ├── heudiconv-heuristic.py
     │   └── processing-pipeline.sh
     ├── communications/
-    │   └── slack/                       # Archived Slack channels
+    │   └── slack//                      # Archived Slack channels
     ├── calendar/                        # Exported Google Calendar events
-    ├── docs/                            # Lab protocols, SOPs
-    └── .datalad/
+    └── docs/                            # Lab protocols, SOPs
 ```
 
 DICOMs arrive per session and land in `sourcedata/dicoms/`.
@@ -275,14 +275,14 @@ flowchart TD
 
 | Component | Tool | Status |
 |-----------|------|--------|
-| DICOM to BIDS conversion | [HeuDiConv](https://github.com/nipy/heudiconv) + [ReproIn](https://github.com/repronim/reproin) | Mature, production-ready |
+| DICOM to BIDS conversion | [HeuDiConv](https://github.com/nipy/heudiconv) + [ReproIn](https://github.com/repronim/reproin) | Stable |
 | Stimulus capture | [ReproStim](https://github.com/ReproNim/reprostim) | Active development |
 | Stimulus annotation | [Annotation Garden]({{< ref "annotation-garden" >}}) | Alpha |
-| Quality control | [MRIQC](https://mriqc.readthedocs.io/) | Mature |
-| Preprocessing | [fMRIPrep](https://fmriprep.org/) | Mature |
+| Quality control | [MRIQC](https://mriqc.readthedocs.io/) | Stable |
+| Preprocessing | [fMRIPrep](https://fmriprep.org/) | Stable |
 | Container management | [datalad-container]({{< ref "datalad-container" >}}) | Stable |
 | Resource telemetry | [con/duct](https://github.com/con/duct) | Stable |
-| Slack archival | [slackdump]({{< ref "slackdump" >}}) | Working |
+| Slack archival | [slackdump]({{< ref "slackdump" >}}) | Stable |
 | CI log archival | [con/tinuous]({{< ref "tinuous" >}}) | Stable |
 | Issue archival | [git-bug]({{< ref "git-bug" >}}) | Stable |
 | Repository backup | [python-github-backup]({{< ref "github-backup" >}}) | Stable |

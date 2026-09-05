@@ -26,8 +26,6 @@ params:
       url: "https://hub.psychoinformatics.de/abcd-j/data-catalog"
 ---
 
-## Overview
-
 [datalad-catalog](https://github.com/datalad/datalad-catalog) is a DataLad extension that generates user-friendly, browser-based data catalogs from structured metadata. It produces a static Vue.js web interface that can be hosted anywhere -- GitHub Pages, institutional servers, or any static file host.
 
 The tool bridges the gap between machine-readable DataLad metadata and human-browsable discovery interfaces. Rather than requiring users to understand git-annex or DataLad commands to find datasets, they get a searchable web catalog with dataset descriptions, file trees, publications, and funding information.
@@ -40,6 +38,8 @@ The tool bridges the gap between machine-readable DataLad metadata and human-bro
 - **Incremental updates** -- add or remove metadata entries without rebuilding the entire catalog
 - **Search and browse** -- full-text search, dataset tree navigation, subdataset exploration
 - **Rich display** -- publications, funding, authors, file trees, dataset versions
+
+Upstream describes the project as downscaled and focused on maintenance; new features are considered case by case.
 
 ## Installation and Usage
 

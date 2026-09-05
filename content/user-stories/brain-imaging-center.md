@@ -161,32 +161,33 @@ need special handling.
 The center maintains its own vault,
 distinct from each lab's individual vault.
 BIDS-converted data lands in `sourcedata/bids-raw/`
-(see [bids-specification#2191](https://github.com/bids-standard/bids-specification/pull/2191)
-for related naming discussions):
+(the BIDS "study dataset" layout of
+[bids-specification#2191](https://github.com/bids-standard/bids-specification/pull/2191)
+uses a top-level `rawbids/` directory instead; the two are not yet reconciled here).
+`//` marks [subdataset boundaries]({{< ref "vault-organization#dataset-nesting-notation" >}}):
 
 ```
-center-vault/                            # DataLad superdataset
+center-vault//                           # DataLad superdataset
     ├── incoming/                        # Raw DICOMs before routing
     │   └── {date}/{session}/
     ├── studies/                          # Per-study BIDS datasets
-    │   ├── study-alpha/                 # Lab A's study
+    │   ├── study-alpha//                # Lab A's study (cloned by Lab A)
     │   │   ├── sourcedata/dicoms/
-    │   │   ├── sourcedata/bids-raw/    # BIDS
+    │   │   ├── sourcedata/bids-raw//   # BIDS
     │   │   └── derivatives/
-    │   │       ├── mriqc/
-    │   │       └── fmriprep/
-    │   ├── study-beta/                  # Lab B's study
+    │   │       ├── mriqc//
+    │   │       └── fmriprep//
+    │   ├── study-beta//                 # Lab B's study
     │   └── ...
     ├── qa/                              # Center's own QA data
-    │   ├── phantom/                     # Weekly phantom scans
+    │   ├── phantom//                    # Weekly phantom scans (published independently)
     │   │   ├── {date}/
     │   │   └── trends/                  # Longitudinal QC metrics
     │   └── environmental/               # Temperature, humidity logs
     ├── reprostim/                       # All stimulus captures
     │   └── {date}/{session}/
-    ├── birch/                           # All behavioral event logs
-    │   └── {date}/{session}/
-    └── .datalad/
+    └── birch/                           # All behavioral event logs
+        └── {date}/{session}/
 ```
 
 ### Data Routing
@@ -309,9 +310,9 @@ flowchart TD
 
 | Component | Tool | Status |
 |-----------|------|--------|
-| DICOM to BIDS | [HeuDiConv](https://github.com/nipy/heudiconv) + [ReproIn](https://github.com/repronim/reproin) | Mature |
-| Quality control | [MRIQC](https://mriqc.readthedocs.io/) | Mature |
-| Preprocessing | [fMRIPrep](https://fmriprep.org/) | Mature |
+| DICOM to BIDS | [HeuDiConv](https://github.com/nipy/heudiconv) + [ReproIn](https://github.com/repronim/reproin) | Stable |
+| Quality control | [MRIQC](https://mriqc.readthedocs.io/) | Stable |
+| Preprocessing | [fMRIPrep](https://fmriprep.org/) | Stable |
 | HPC job management | [BABS](https://pennlinc-babs.readthedocs.io/) | Active development |
 | Container management | [datalad-container]({{< ref "datalad-container" >}}) | Stable |
 | Resource telemetry | [con/duct](https://github.com/con/duct) | Stable |

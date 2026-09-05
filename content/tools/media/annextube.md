@@ -14,7 +14,7 @@ params:
   issues: "https://github.com/con/annextube/issues"
   language: "Python"
   license: "MIT"
-  maturity: "beta"
+  maturity: "alpha"
   last_verified: "2026-02"
   examples:
     - title: "ReproTube Archive"
@@ -38,29 +38,33 @@ annextube solves this by treating YouTube archival as a first-class DataLad work
 
 ## Architecture
 
-annextube builds on a clear separation between large binary content and structured metadata:
+annextube builds on a clear separation between large binary content and structured metadata, with summary tables at each level of the hierarchy:
 
 ```
 my-channel-archive/
-  .datalad/
-  .git/
-  .gitattributes
-  videos/
-    <video-id>/
-      <video-id>.mp4              # git-annex (content-addressed)
-      <video-id>.info.json        # git (yt-dlp metadata)
-      <video-id>.description      # git (video description)
-      <video-id>.en.vtt           # git (English subtitles)
-      <video-id>.thumbnail.jpg    # git-annex (thumbnail image)
-  channel_metadata.json           # git (channel-level metadata)
+  .annextube/config.toml          # git (which channels/playlists to back up)
+  channels.tsv                    # git (all channels at a glance)
+  <channel>/
+    channel.json                  # git (per-channel metadata)
+    videos/
+      videos.tsv                  # git (all videos in this channel)
+      authors.tsv                 # git-annex
+      <year>/<month>/<video-dir>/
+        metadata.json             # git (full per-video metadata)
+        video.mkv                 # git-annex (content-addressed)
+        thumbnail.jpg             # git-annex
+        video.<lang>.vtt          # git-annex (captions)
+        captions.tsv              # git (caption index)
+        comments.json             # git-annex
+    playlists/                    # symlinks into videos/
 ```
 
 This layout means:
 
-- `git log` shows you when videos were added, metadata changed, or descriptions updated
+- `git log` shows you when videos were added or metadata changed
 - `git annex whereis` tells you where each video file is stored (local, S3, institutional storage)
 - `datalad status` gives you an instant overview of what has changed
-- Standard git tools (diff, blame, log) work on all the text metadata
+- The TSV summaries can be opened directly in DuckDB or VisiData, and drive the bundled Svelte web UI (see [Data-Visualization Separation]({{< ref "data-visualization-separation#annextube" >}}))
 
 ## Key Features
 
@@ -76,27 +80,18 @@ After the initial archive, subsequent runs only download new videos and updated 
 
 For each video, annextube extracts and stores:
 
-- **info.json** -- the full yt-dlp metadata dump including title, description, upload date, duration, view count, tags, categories, chapters, and more
-- **Description files** -- the video description as a standalone text file for easy searching
+- **metadata.json** -- the full yt-dlp metadata including title, description, upload date, duration, view count, tags, categories, chapters, and more
 - **Thumbnails** -- preserved in git-annex alongside the video
-- **Subtitles and transcripts** -- auto-generated and manual subtitles in VTT/SRT format, stored in git for full-text searchability
+- **Captions** -- creator-uploaded and auto-generated caption tracks as VTT files, plus a `captions.tsv` index in git
+- **Comments** -- archived as `comments.json`
 
-### Subtitle and Transcript Archival
+### Caption Archival
 
-Subtitles are particularly valuable for AI readiness. annextube downloads all available subtitle tracks (both creator-uploaded and YouTube's auto-generated captions) and stores them as plain text files in git. This means:
-
-- Full-text search across all archived video transcripts using standard `grep`/`git grep`
-- LLM-based analysis of video content without needing to process the video files themselves
-- Structured subtitle formats (VTT with timestamps) enable time-aligned references back to the source video
+Captions are particularly valuable for AI readiness. annextube downloads all available caption tracks and keeps a per-video `captions.tsv` index in git. By default the VTT files themselves are annexed (they can be large), so full-text search over transcripts requires `git annex get` first, or the `build-search-index` subcommand that annextube provides for the web UI.
 
 ### DataLad Integration
 
-annextube operates as a DataLad-aware tool:
-
-- Creates proper DataLad datasets for new archives
-- Uses `datalad save` to commit changes with meaningful messages
-- Supports DataLad's run mechanism for full provenance tracking
-- Works with DataLad siblings for pushing archives to remote storage
+DataLad is an optional dependency. When available, annextube creates DataLad datasets for new archives and uses `datalad save` and `datalad push` to commit and publish; without it, it falls back to plain git and git-annex. Wrapping `annextube backup` in `datalad run` is how you get provenance records.
 
 ## Installation
 
@@ -112,78 +107,44 @@ uv pip install annextube
 
 ### Prerequisites
 
-- Python 3.8+
-- git-annex
-- DataLad
+- Python 3.10+
+- git-annex 8.0+
 - yt-dlp (installed as a dependency)
+- ffmpeg (recommended)
+- DataLad (optional)
 
 ## Usage
 
-### Archive a YouTube Channel
-
 ```bash
-# Create a new DataLad dataset for the archive
-datalad create my-channel-archive
-cd my-channel-archive
-
-# Archive an entire channel
-annextube archive https://www.youtube.com/@ChannelName
-```
-
-### Archive a Playlist
-
-```bash
-annextube archive https://www.youtube.com/playlist?list=PLxxxxxxxx
-```
-
-### Incremental Update
-
-```bash
-# Run again later to pick up new videos
-annextube archive https://www.youtube.com/@ChannelName
-```
-
-annextube tracks what has already been downloaded and only fetches new content.
-
-### Example Workflow: Archiving a Research Channel
-
-A complete workflow for archiving a conference channel and making it available for AI-assisted analysis:
-
-```bash
-# 1. Create the archive dataset
+# Create the archive dataset and initialize an annextube config
 datalad create -c text2git conference-talks
 cd conference-talks
+annextube init
 
-# 2. Initial archive of the channel
-annextube archive https://www.youtube.com/@ConferenceName
+# Edit .annextube/config.toml: list the channels and playlists to back up
 
-# 3. Push video files to institutional S3 storage
-git annex initremote s3 type=S3 bucket=conference-archive
-git annex copy --to s3 .
+# Back up everything listed in the config (incremental on repeat runs)
+annextube backup
 
-# 4. The metadata and subtitles are in git, push to GitHub/Forgejo
-datalad push --to origin
-
-# 5. Later: update with new uploads
-annextube archive https://www.youtube.com/@ConferenceName
-
-# 6. Search across all archived transcripts
-git grep "interesting topic" -- '*.vtt'
+# Generate the static web UI for browsing the archive
+annextube generate-web
 ```
+
+`annextube backup` tracks what has already been downloaded and only fetches new content, so the same command serves as the incremental update. Other subcommands cover collections of archives (`collection init` / `collection backup`), aggregation across archives (`aggregate`), a search index for the web UI (`build-search-index`), integrity checks (`check`), and caption curation (`curate-captions`). Run `annextube --help` for the full list.
 
 ## AI Readiness
 
-annextube produces **ai-partial** output:
+**Level: ai-partial.**
 
 | Component | AI Ready? | Notes |
 |-----------|-----------|-------|
-| info.json metadata | Yes | Structured JSON, directly parseable |
-| Video descriptions | Yes | Plain text, immediately usable |
-| Subtitles/transcripts | Yes | Time-stamped text, excellent for RAG |
+| metadata.json | Yes | Structured JSON, directly parseable |
+| videos.tsv / channels.tsv | Yes | Tabular summaries, queryable without a database |
+| Captions (VTT) | Yes | Time-stamped text, excellent for RAG (annexed; `git annex get` first) |
 | Video files | No | Require transcription (Whisper, etc.) |
 | Thumbnails | No | Require vision model for analysis |
 
-The combination of structured metadata and subtitle text means that a large fraction of a channel's informational content is immediately accessible to AI systems without any additional processing. For videos lacking subtitles, tools like OpenAI Whisper can be run on the git-annex-stored video files to generate transcripts.
+The combination of structured metadata and caption text means that a large fraction of a channel's informational content is accessible to AI systems without any transcription step. For videos lacking subtitles, tools like OpenAI Whisper can be run on the git-annex-stored video files to generate transcripts.
 
 ## Comparison with yt-dlp
 
@@ -198,15 +159,15 @@ annextube builds on [yt-dlp]({{< ref "yt-dlp" >}}) and shares its download capab
 | Incremental updates | Manual tracking | Built-in |
 | Content deduplication | No | Via git-annex |
 | Remote storage (S3, etc.) | No | Via git-annex special remotes |
-| Provenance tracking | No | Via DataLad run records |
+| Provenance tracking | No | Via `datalad run` (optional) |
 
 If you just need to download a few videos, yt-dlp is simpler. If you are building a persistent, versioned, deduplicated archive of YouTube content integrated with your research data management infrastructure, annextube is the right tool.
 
-## Limitations and Caveats
+## Limitations
 
 - **YouTube rate limiting**: Heavy archival can trigger rate limits. annextube inherits yt-dlp's throttling behavior but long-running archives of large channels may need to be done in stages.
 - **YouTube Terms of Service**: Archiving content for research preservation purposes. Users should be aware of YouTube's ToS and applicable copyright considerations.
-- **Beta status**: The tool is functional and actively used but the API and output format may still evolve.
+- **Early development**: The tool is in use but upstream marks it as early development; the CLI and layout may still change.
 - **yt-dlp dependency**: Changes in YouTube's infrastructure occasionally break yt-dlp, which cascades to annextube. Keeping yt-dlp updated is important.
 
 ## See Also

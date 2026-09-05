@@ -57,9 +57,9 @@ Several projects have independently adopted this as a **side channel**:
 a parallel, complementary database that lives in the same repository
 and travels through the same remotes.
 The side channel does not have to live outside `refs/heads/`.
-git-annex and Entire use ordinary branches,
+git-annex (and Entire, in its earlier layout) use ordinary branches,
 which every clone fetches by default;
-git-bug, metalad, and notes use other namespaces,
+git-bug, metalad, notes, and current Entire use other namespaces,
 which a clone fetches only when told to.
 Both are valid setups with different sharing defaults,
 and the sections below treat them together.
@@ -177,24 +177,30 @@ reuse them instead of creating duplicates.
 The mirror is one-directional because the bridge cannot
 create issues on GitHub on behalf of other authors.
 
-### Entire: session checkpoints on an orphan branch
+### Entire: session checkpoints as refs
 
 [Entire]({{< ref "tools/ai-sessions/entire-io" >}})
-keeps a permanent orphan branch, `entire/checkpoints/v1`,
-plus short-lived local shadow branches that are never pushed.
-The checkpoints branch is a sharded file tree:
+keeps short-lived local shadow branches that are never pushed,
+and condenses them at commit time into checkpoints.
+Earlier releases stored all checkpoints on one permanent orphan branch,
+`entire/checkpoints/v1`, as a sharded file tree:
 `<2 hex>/<10 hex>/metadata.json` with per-session subdirectories
 holding `full.jsonl`, `prompt.txt`, and `context.md`
 ([bids-utils example](https://github.com/bids-standard/bids-utils/tree/entire/checkpoints/v1),
 [how it works](https://julien.danjou.info/blog/how-entire-works-under-the-hood/)).
+Current releases give each checkpoint its own ref,
+`refs/entire/checkpoints/<shard>/<id>`, with the same tree contents,
+which moves Entire from the "orphan branch" row of the table above
+to the "custom namespace" row.
 The link from a code commit to its checkpoint is a commit trailer,
 `Entire-Checkpoint: <id>`, and the link back is a search for that trailer.
 
 Merging is "conflict-free by design":
 checkpoint identifiers are random,
-so two developers' trees are combined by tree union.
+so two developers' checkpoints are combined by tree union
+(or, with per-checkpoint refs, never touch at all).
 There is no retention policy;
-the branch grows forever.
+the checkpoints accumulate forever.
 Squash-merging a pull request discards the trailers,
 which breaks the linkage for those commits.
 
@@ -217,7 +223,7 @@ Reading the projects side by side,
 each has answered the same set of questions.
 
 **Unit of storage and addressing.**
-git-annex and Entire store file trees addressed by a hashed path.
+git-annex and Entire store file trees addressed by a hashed path or a per-checkpoint ref.
 git-bug and metalad store bare objects addressed by hash
 and keep them alive through refs.
 Notes address by the commit they annotate.
@@ -281,7 +287,7 @@ The question is which information should go where.
   The summary tables of the
   [Metadata Extraction]({{< ref "metadata-extraction" >}}) page
   belong here; they are
-  [Frozen Frontiers]({{< ref "/_index.md#frozen-frontiers" >}})
+  [Frozen Frontiers]({{< ref "about#frozen-frontiers" >}})
   meant to be opened in DuckDB or VisiData.
 - **In a side channel**: information about the tree or its history
   rather than of it. Availability and remote configuration (git-annex),
@@ -298,7 +304,7 @@ without inventing satellite repositories.
 git-bug's `refs/bugs/` is the working precedent;
 the same shape could hold `refs/tinuous/...` or `refs/discussions/...`,
 but no tool does this today and it remains an open question
-in the [self-contain-github-repo](/projects/self-contain-github-repo/) project.
+in the [self-contain-github-repo](https://github.com/con/serve/tree/master/projects/self-contain-github-repo) project.
 
 ## Open Questions
 

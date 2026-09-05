@@ -15,11 +15,9 @@ params:
   pypi: "https://pypi.org/project/wayback-archive/"
   language: "Python"
   license: "GPL-3.0"
-  maturity: "active"
+  maturity: "beta"
   last_verified: "2026-05"
 ---
-
-## Overview
 
 Wayback-Archive fills a niche the other tools in this section do not cover:
 recovering a site that is no longer reachable on the live web but has been
@@ -38,11 +36,11 @@ written specifically for that source.
 ## Key Features
 
 - **Wayback-aware URL rewriting** -- strips `/web/<timestamp>/` prefixes and
-  `_im`/`_js`/`_cs` resource-type suffixes, converting absolute Wayback URLs
+  the `im_`/`js_`/`cs_` resource-type modifiers, converting absolute Wayback URLs
   to relative paths that resolve in a local tree.
 - **Timestamp fallback** -- when a referenced asset returns 404 at the requested
-  snapshot, searches nearby timestamps in the Wayback CDX index and uses the
-  closest available capture.
+  snapshot, retries nearby timestamps (in widening steps up to about a week
+  either side) until a capture answers.
 - **Asset recovery** -- downloads fonts (including Google Fonts, locally
   inlined to avoid CORS), background images referenced from CSS, resources
   pulled from `data-*` attributes, and assets discovered while parsing JS.
@@ -85,12 +83,12 @@ Use it when:
 - You need to ingest a recovered site into a git-annex / DataLad repository
   for long-term preservation alongside other research artifacts.
 
-It does not replace [ArchiveBox](../archivebox/), [Browsertrix](../browsertrix/),
-[HTTrack](../httrack/), or [SingleFile](../singlefile/) for archiving live sites --
+It does not replace [ArchiveBox]({{< ref "archivebox" >}}), [Browsertrix]({{< ref "browsertrix" >}}),
+[HTTrack]({{< ref "httrack" >}}), or [SingleFile]({{< ref "singlefile" >}}) for archiving live sites --
 those produce higher-fidelity captures with provenance and (in the WARC case)
 standards-compliant replay.
 
-## Scope and Known Gaps
+## Limitations
 
 Wayback-Archive operates on **one snapshot per invocation**. `WAYBACK_URL`
 is a fixed `/web/<timestamp>/<original-url>`; the downloader parses that
@@ -102,8 +100,9 @@ single timestamp at startup and stays there. There is no native mode for:
 - emitting per-snapshot artifacts to git.
 
 The "timeframe fallback" inside the tool sounds related but is not: it
-walks ±24 h around the requested timestamp only to recover *individual
-assets that 404* within one snapshot, not to enumerate the site's history.
+tries timestamps up to about a week either side of the requested one only
+to recover *individual assets that 404* within one snapshot, not to
+enumerate the site's history, and it never consults the CDX index.
 
 For a multi-snapshot history a wrapper around the CDX API is needed
 (see below).
@@ -170,6 +169,12 @@ blame site/index.html` resolve to the *archive era* the content came
 from, while `git log --committer=you@…` shows when *you* did the
 recovery. `git log --author='Internet Archive'` selects only the
 capture commits, distinct from any subsequent edits you make on top.
+
+Two companion files ship alongside the wrapper: `requirements.txt` for its
+Python dependencies (`VENV_ACTIVATE` points the wrapper at a virtualenv), and
+[`git-history-to-wacz.py`](git-history-to-wacz.py), which turns the
+per-capture commits of such a dataset back into a WACZ file for replay in
+ReplayWeb.page.
 
 A live demo dataset built with this exact wrapper is available at
 [github.com/con/serve-wayback-archive-demo](https://github.com/con/serve-wayback-archive-demo).

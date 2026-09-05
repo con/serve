@@ -41,9 +41,9 @@ For each repository, the vault needs:
 | Artifact | Tool | Format |
 |----------|------|--------|
 | Git history (commits, branches, tags) | `git clone --mirror` | Git |
-| Issues and PRs (with comments, labels, milestones) | [git-bug]({{< ref "git-bug" >}}), [python-github-backup]({{< ref "github-backup" >}}) | Git refs / JSON |
-| Discussions | [gh-discussions-export]({{< ref "gh-discussions-export" >}}) | JSON / Markdown |
-| Wiki pages | [gh-md]({{< ref "gh-md" >}}) | Markdown |
+| Issues and PRs (with comments, labels, milestones) | [git-bug]({{< ref "git-bug" >}}), [python-github-backup]({{< ref "github-backup" >}}), [gh-md]({{< ref "gh-md" >}}) | Git refs / JSON / Markdown |
+| Discussions | [python-github-backup]({{< ref "github-backup" >}}), [gh-md]({{< ref "gh-md" >}}), [gh-discussions-export]({{< ref "gh-discussions-export" >}}) | JSON / Markdown |
+| Wiki pages | `git clone REPO.wiki.git`, [python-github-backup]({{< ref "github-backup" >}}) `--wikis` | Git |
 | Releases and artifacts | [python-github-backup]({{< ref "github-backup" >}}) | JSON + binaries |
 
 Some repositories are **private**.
@@ -144,7 +144,7 @@ In the vault, content from private repos carries
 
 > **TODO:** AI-generated layout, to be curated.
 
-The layout follows the [self-contained per-entity grouping]({{< ref "vault-organization#self-contained-per-entity-grouping" >}})
+The layout follows the [self-contained per-entity grouping]({{< ref "vault-organization#emerging-principles" >}})
 principle: everything about a given repository --
 code, issues, CI logs, discussions --
 lives under one per-repo superdataset
@@ -199,13 +199,13 @@ everything about that repository as a unit.
 
 {{< mermaid >}}
 flowchart TD
-    gh_org[GitHub Organization] -->|git mirror| repos[repos/]
-    gh_org -->|git-bug bridge| issues[issues/]
-    gh_org -->|gh-discussions-export| discussions[discussions/]
-    gh_org -->|con/tinuous| ci[ci/]
-    gh_org -->|python-github-backup| releases[releases/]
+    gh_org[GitHub Organization] -->|git mirror| repos["repos/dandi-cli//git//"]
+    gh_org -->|git-bug bridge| issues["repos/dandi-cli//issues//"]
+    gh_org -->|gh-discussions-export| discussions["repos/dandi-cli//discussions//"]
+    gh_org -->|con/tinuous| ci["repos/dandi-cli//tinuous-logs//"]
+    gh_org -->|python-github-backup| releases["repos/dandi-cli//releases/"]
 
-    slack[Slack Workspace] -->|slackdump| comms[communications/slack/]
+    slack[Slack Workspace] -->|slackdump| comms["communications/slack//"]
 
     repos -->|Forgejo mirror sync| forgejo[Forgejo-Aneksajo]
     issues --> forgejo
@@ -233,9 +233,9 @@ flowchart TD
 | Issue archival | [git-bug]({{< ref "git-bug" >}}) | Stable |
 | Repository backup | [python-github-backup]({{< ref "github-backup" >}}) | Stable |
 | Discussions export | [gh-discussions-export]({{< ref "gh-discussions-export" >}}) | Beta |
-| Wiki export | [gh-md]({{< ref "gh-md" >}}) | Stable |
+| Issues, PRs, and Discussions as markdown | [gh-md]({{< ref "gh-md" >}}) | Beta |
 | CI log archival | [con/tinuous]({{< ref "tinuous" >}}) | Stable |
-| Slack archival | [slackdump]({{< ref "slackdump" >}}) | Working |
+| Slack archival | [slackdump]({{< ref "slackdump" >}}) | Stable |
 | Self-hosted forge | [Forgejo-Aneksajo]({{< ref "forgejo-aneksajo" >}}) | Beta |
 | Deployment | [Lab-in-a-Box]({{< ref "lab-in-a-box" >}}) | Alpha |
 

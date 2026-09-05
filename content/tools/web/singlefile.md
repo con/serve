@@ -18,8 +18,6 @@ params:
   last_verified: "2026-02"
 ---
 
-## Overview
-
 SingleFile is a browser extension (available for Chrome, Firefox, Edge, and
 Safari) and a companion CLI tool that saves a complete web page into a single
 HTML file.  Unlike "Save As" which produces an HTML file plus a folder of
@@ -47,11 +45,11 @@ self-contained, portable, and requires only a web browser to view.
   saving.
 - **Auto-save** -- can be configured to automatically save pages based on rules
   (URL patterns, time intervals).
-- **Compact output** -- compresses embedded resources to minimize file size.
-- **Metadata preservation** -- saves the original URL, page title, and save
-  date in HTML meta tags and comments.
+- **Compact output** -- optional HTML/CSS compression and removal of unused styles to keep files small.
+- **Metadata preservation** -- can record the original URL and save date in
+  a comment at the top of the file.
 
-## Basic Usage
+## Usage
 
 ### Browser Extension
 
@@ -66,14 +64,11 @@ self-contained, portable, and requires only a web browser to view.
 # Install the CLI
 npm install -g single-file-cli
 
-# Save a single page
-single-file "https://example.com/important-page" \
-    --output "example-page.html"
+# Save a single page (output filename is the second positional argument)
+single-file "https://example.com/important-page" example-page.html
 
-# Batch save from a list of URLs
-while read url; do
-    single-file "$url" --output "archive/$(echo $url | md5sum | cut -c1-8).html"
-done < urls.txt
+# Batch save from a list of URLs into a directory
+single-file --urls-file urls.txt --output-directory archive/
 ```
 
 ## git-annex / DataLad Integration
@@ -95,7 +90,7 @@ cd web-pages
 echo "*.html annex.largefiles=largerthan=100kb" >> .gitattributes
 
 # Save a page and add to the dataset
-single-file "https://example.com/page" --output "pages/example-page.html"
+single-file "https://example.com/page" pages/example-page.html
 datalad save -m "Archive example.com/page via SingleFile"
 ```
 
@@ -105,10 +100,7 @@ datalad save -m "Archive example.com/page via SingleFile"
 datalad run -m "Archive pages from urls.txt via SingleFile" \
     --input urls.txt \
     --output "pages/" \
-    'while read url; do
-        slug=$(echo "$url" | sed "s|https\?://||;s|/|_|g")
-        single-file "$url" --output "pages/${slug}.html"
-    done < urls.txt'
+    single-file --urls-file urls.txt --output-directory pages/
 ```
 
 ### Integration with ArchiveBox

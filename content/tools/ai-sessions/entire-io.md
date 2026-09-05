@@ -1,10 +1,10 @@
 ---
 title: "Entire.io"
 date: 2026-02-12
-description: "Git-native AI session archival using shadow branches with cross-session indexing and attribution tracking"
-summary: "Stores AI coding session transcripts on separate git shadow branches, preserving full provenance without polluting the working tree"
+description: "Git-native AI session archival as checkpoint refs inside the repository, with session resume and search"
+summary: "Stores AI coding session checkpoints as git refs alongside the code, linked to commits by trailers, without touching the working tree"
 categories: ["AI Sessions"]
-tags: ["ai", "sessions", "git", "shadow-branches", "metadata", "attribution", "claude", "cursor"]
+tags: ["ai", "sessions", "git", "checkpoints", "claude", "codex", "cursor", "gemini"]
 media_types: ["ai-sessions"]
 integrations: ["git-only"]
 ai_readiness: ["ai-ready"]
@@ -22,10 +22,11 @@ params:
 ---
 
 Entire.io takes a fundamentally different approach to AI session archival
-compared to export-based tools like [cctrace](../cctrace/) or [ccexport](../ccexport/).
+compared to export-based tools like [cctrace]({{< ref "cctrace" >}}) or [ccexport]({{< ref "ccexport" >}}).
 Instead of exporting transcripts to files in the working tree,
-it stores session data on **shadow branches** -- dedicated git branches
-that coexist with your project history but never appear in your working directory.
+it stores session **checkpoints** as git refs inside the same repository --
+data that travels with the repository and its remotes
+but never appears in your working directory.
 
 This is a significant architectural choice:
 your project's file tree stays clean, your `.gitignore` needs no AI-specific entries,
@@ -33,146 +34,83 @@ and yet the complete record of every AI-assisted development session
 is preserved in the same repository, subject to the same backup and replication
 strategies as your code.
 
-## Shadow Branch Architecture
+## Checkpoint Storage
 
-The core insight behind Entire.io is that git branches are cheap
-and need not correspond to lines of development.
-A shadow branch is an orphan branch (no shared commit ancestry with your main branch)
-that stores only session data.
+While an agent works, Entire records progress on a short-lived local
+**shadow branch** that is never pushed.
+When you commit, that work is condensed into a checkpoint:
+its own ref under `refs/entire/checkpoints/<shard>/<id>`,
+whose tree holds `metadata.json` and the per-session transcript files.
+The code commit carries an `Entire-Checkpoint: <id>` trailer,
+which is the link from code to conversation; the link back is a search for
+that trailer.
+(Earlier releases kept all checkpoints on a single orphan branch,
+`entire/checkpoints/v1`, a layout still visible in older repositories.)
 
-When you run an AI coding session with Entire.io active,
-the tool writes structured JSONL transcript data to a branch
-named something like `entire/sessions/<session-id>`.
-This branch contains:
-
-- The complete conversation transcript (prompts, responses, tool calls, file edits)
-- Session metadata (start time, end time, AI model used, project context)
-- File diffs showing exactly what changed during the session
-- Attribution markers indicating which edits were human-initiated versus AI-generated
-
-Because shadow branches are orphan branches,
-they share no history with your main development branch.
-A `git log main` shows only your project commits;
-`git log entire/sessions/abc123` shows only that session's data.
-The two histories coexist in the same `.git` directory
-without interfering with each other.
-
-### Metadata Branch
-
-In addition to per-session branches, Entire.io maintains a **metadata branch**
-(`entire/meta` by convention) that serves as a cross-session index.
-This branch contains:
-
-- A session manifest listing all archived sessions with timestamps and summaries
-- Attribution aggregates -- which files in the project were touched by AI,
-  and in which sessions
-- Cross-references between sessions (e.g., "session B continued the work started in session A")
-- Tags and annotations added by the developer
-
-The metadata branch makes it possible to answer questions like:
-"Which AI sessions contributed to this module?"
-or "What percentage of this file was AI-authored?"
-without scanning every individual session branch.
+Because checkpoint identifiers are random, two developers' checkpoints
+never collide, and combining them is a plain union of refs.
+Checkpoints are pushed automatically alongside `git push`
+(disable with `--skip-push-sessions`), or to a separate repository with
+`--checkpoint-remote`.
+Secrets are redacted on a best-effort basis before a checkpoint is written.
 
 ## Supported AI Tools
 
-Entire.io supports multiple AI coding assistants:
-
-- **Claude Code** -- Captures sessions from Anthropic's CLI assistant
-  via lifecycle hooks (pre/post prompt, session start/stop).
-- **Gemini CLI** -- Google's CLI coding assistant.
-- **OpenCode** -- Open-source AI coding CLI.
-- **Cursor** -- Captures AI interactions from Cursor's VS Code fork.
-- **Additional tools** -- The architecture is extensible via agent adapters.
-
+Entire.io supports multiple AI coding agents, selected with `--agent` when enabling:
+Claude Code, Codex, Copilot CLI, Cursor, Droid, Gemini CLI, OpenCode, and Pi.
+For Claude Code it installs its own hooks in `.claude/settings.json`.
 This multi-tool support is particularly valuable for teams
 where different developers use different AI assistants.
-The metadata branch provides a unified view across all tools.
 
-## Attribution Tracking
-
-One of Entire.io's most distinctive features is **attribution tracking** --
-maintaining a record of which code was authored by a human
-versus generated or suggested by an AI assistant.
-
-For each session, Entire.io records:
-
-- Which files were modified and the specific diffs
-- Whether each change originated from a human edit or an AI response
-- The prompt context that led to each AI-generated change
-- The human's accept/reject/modify decisions for AI suggestions
-
-This information is aggregated on the metadata branch,
-enabling project-level attribution analysis.
-For research software, this provenance trail is essential:
-it answers questions about intellectual contribution,
-supports licensing compliance (some AI-generated code may have
-different IP status depending on jurisdiction),
-and satisfies emerging requirements from journals and funders
-about AI involvement in research outputs.
-
-## Installation and Basic Usage
-
-Install the CLI tool via npm:
+## Installation and Usage
 
 ```bash
-npm install -g @entireio/cli
+# Install (Homebrew; a curl installer, Scoop, and `go install` are also offered)
+brew tap entireio/tap && brew install --cask entire
+
+# Enable for the current repository and agent
+entire enable --agent claude-code
+
+# Inspect
+entire status
+entire session list
+entire checkpoint list
+entire checkpoint explain <id>
+
+# Search across checkpoints, or resume a session
+entire search "why did we change the parser"
+entire session resume <id>
 ```
 
-Initialize Entire.io in an existing git repository:
-
-```bash
-entire init
-```
-
-This creates the shadow branch infrastructure
-(the metadata branch and configuration)
-without modifying your working tree or existing branches.
-
-To archive a Claude Code session:
-
-```bash
-entire capture claude --session <session-id>
-```
-
-To list all archived sessions:
-
-```bash
-entire list
-```
-
-To view attribution summary for the current project:
-
-```bash
-entire attribution summary
-```
+Experimental `entire blame` and `entire why` answer which lines came from
+which checkpoint.
 
 ## How It Differs from Export Tools
 
-The table below compares Entire.io's shadow branch approach
+The table below compares Entire.io's checkpoint-ref approach
 with file-based export tools:
 
-| Aspect | Entire.io (shadow branches) | cctrace / ccexport (file export) |
+| Aspect | Entire.io (checkpoint refs) | cctrace / ccexport (file export) |
 |---|---|---|
-| **Storage location** | Orphan git branches in same repo | Files in working tree or separate directory |
-| **Working tree impact** | None -- shadow branches are invisible to `git status` | Adds files that must be committed or gitignored |
-| **Cross-session indexing** | Built-in via metadata branch | Manual; requires external tooling |
-| **Attribution tracking** | Native, aggregated per-file | Not available |
-| **Multi-tool support** | Claude Code, Cursor, extensible | Tool-specific (one tool each) |
+| **Storage location** | `refs/entire/*` in the same repo | Files in working tree or separate directory |
+| **Working tree impact** | None -- refs are invisible to `git status` | Adds files that must be committed or gitignored |
+| **Cross-session search** | Built-in (`entire search`, `checkpoint list`) | Manual; requires external tooling |
+| **Session resume** | Yes | No |
+| **Multi-tool support** | Eight agents | Claude Code only |
 | **Repository size** | Session data in packfiles, efficiently compressed | Session data as regular files, may be large |
-| **Discoverability** | Requires knowledge of shadow branches | Files visible in directory listing |
-| **Portability** | Travels with `git clone --mirror`; lost with default `git clone` | Always present after clone |
+| **Discoverability** | Requires knowing the refs exist | Files visible in directory listing |
+| **Portability** | Needs a `refs/entire/*` refspec or `--mirror`; not fetched by default | Always present after clone |
 
 The portability trade-off is worth noting:
-a default `git clone` does not fetch orphan branches
-unless the remote is configured to advertise them
-or the clone uses `--mirror`.
-For archival purposes this is often acceptable
-(a `git push --all` to a backup remote preserves everything),
-but teams should be aware that shallow clones
-will not include session data.
+a default `git clone` fetches branches and tags but not custom refs,
+so the checkpoints only travel when the remote is fetched with an explicit
+`refs/entire/*` refspec or mirrored.
+Entire's own push hook handles the outbound side;
+teams should be aware that a plain clone will not include session data.
 
-## Integration with con/serve
+## git-annex / DataLad Integration
+
+**Integration level: git-only.**
 
 Entire.io is particularly well-suited for the con/serve project itself.
 Every development session that builds this knowledge base
@@ -180,46 +118,42 @@ can be archived in the same repository,
 creating a complete record of how the project evolved --
 not just the commits, but the conversations that produced them.
 
-For DataLad datasets, shadow branches integrate naturally:
-DataLad tracks the git repository as a whole,
-so shadow branches are included in `datalad save` and `datalad push` operations
-without special configuration.
-The session data becomes part of the dataset's provenance,
-alongside run records and metadata.
+For DataLad datasets the checkpoints live in the same git repository as the
+dataset, but under `refs/entire/*`, which `datalad push` does not propagate
+unless the sibling's push and fetch refspecs include that namespace.
+No established recipe for this exists yet; see
+[Git Content Store as Side-Channel Databases]({{< ref "concepts/git-content-store-side-channels" >}})
+for the general distribution problem such refs share with git-bug and git notes.
 
-To incorporate Entire.io into a DataLad workflow:
-
-1. Initialize Entire.io in the DataLad dataset root
-2. Use Claude Code Hooks (see [Claude Code Hooks](../claude-code-hooks/))
-   to trigger `entire capture` at session end
-3. Session data flows to shadow branches automatically
-4. `datalad push --all` propagates session archives to siblings
-
-## Limitations and Considerations
+## Limitations
 
 - **Beta status** -- Entire.io is under active development.
-  The shadow branch schema and CLI interface may change between releases.
+  The checkpoint layout has already changed once (from a single branch to
+  per-checkpoint refs) and the CLI may change between releases.
 - **Clone behavior** -- As noted above, default `git clone` does not fetch
-  orphan branches. Use `--mirror` for full archival clones,
-  or configure the remote to advertise session branches.
-- **Repository growth** -- While git packfiles compress session data efficiently,
-  long-running projects with many sessions will accumulate data.
-  Consider periodic garbage collection (`git gc --aggressive`)
-  and monitor repository size.
+  `refs/entire/*`. Use `--mirror` for full archival clones,
+  or add the refspec to the remote configuration.
+- **Repository growth** -- Checkpoints are never pruned, so long-running
+  projects with many sessions will accumulate data.
 - **Privacy** -- AI session transcripts may contain sensitive information
   (API keys pasted into prompts, proprietary code discussed with the assistant).
-  Review sessions before pushing to shared remotes,
-  or use Entire.io's filtering options to redact sensitive content.
+  Redaction is best-effort; review sessions before pushing to shared remotes.
+
+## AI Readiness
+
+**Level: ai-ready.**
+
+Checkpoints are stored as JSONL transcripts with JSON metadata, plus a plain-text prompt and a markdown context summary per session. All of it is structured text that an LLM can parse directly, and the commit trailer gives a machine-readable link from code to conversation.
 
 ## See Also
 
-- [git-memento](../git-memento/) -- Lighter-touch approach using git notes instead of branches
-- [Git AI](../git-ai/) -- Line-level AI authorship attribution via git notes
-- [cctrace](../cctrace/) -- Lightweight alternative for Claude Code-only capture
-- [ccexport](../ccexport/) -- Export Claude Code transcripts to readable formats
-- [Claude Code Hooks](../claude-code-hooks/) -- Trigger Entire.io capture automatically
-- [SpecStory](../specstory/) -- VS Code/Cursor extension with a different archival approach
+- [git-memento]({{< ref "git-memento" >}}) -- Lighter-touch approach using git notes instead of checkpoint refs
+- [Git AI]({{< ref "git-ai" >}}) -- Line-level AI authorship attribution via git notes
+- [cctrace]({{< ref "cctrace" >}}) -- Lightweight alternative for Claude Code-only capture
+- [ccexport]({{< ref "ccexport" >}}) -- Export Claude Code transcripts to readable formats
+- [Claude Code Hooks]({{< ref "claude-code-hooks" >}}) -- Trigger Entire.io capture automatically
+- [SpecStory]({{< ref "specstory" >}}) -- VS Code/Cursor extension with a different archival approach
 - [How Entire works under the hood](https://julien.danjou.info/blog/how-entire-works-under-the-hood/) --
-  the `entire/checkpoints/v1` branch layout, commit trailers, and tree-union merging
+  the earlier `entire/checkpoints/v1` branch layout, commit trailers, and tree-union merging
 - [Git Content Store as Side-Channel Databases]({{< ref "concepts/git-content-store-side-channels" >}}) --
   the general pattern, compared across git-annex, git-bug, notes, and metalad

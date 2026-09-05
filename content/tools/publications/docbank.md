@@ -38,7 +38,7 @@ without requiring cloud storage.
 ## Search
 
 Ranked full-text search over document names and extracted text.
-The page does not describe the text extraction pipeline or which document
+Upstream documentation does not describe the text extraction pipeline or which document
 formats support full-text extraction beyond PDFs.
 
 ## Preservation Features
@@ -48,7 +48,9 @@ formats support full-text extraction beyond PDFs.
 - Complete content authentication (SHA-256 digests)
 - Optional permanent audited history (all versions retained)
 
-## Relation to git-annex / DataLad
+## git-annex / DataLad Integration
+
+**Integration level: external.**
 
 docbank's content-addressed storage and immutable versioning overlap
 conceptually with git-annex's design, but the two systems are independent.
@@ -62,13 +64,19 @@ full DataLad dataset.
 The `~/.docbank/` store could in principle be snapshotted into a DataLad
 dataset for off-site backup, but no established workflow for this exists.
 
-Compared to [Zotero](../zotero/) (which manages scholarly references with
+Compared to [Zotero]({{< ref "zotero" >}}) (which manages scholarly references with
 metadata, citation keys, and publisher integration), docbank is format-agnostic
 and does not attempt citation-level metadata -- it is closer to a
 content-addressed file store with search.
 
+## AI Readiness
+
+**Level: ai-partial.**
+
+Catalog metadata (names, tags, versions, SHA-256 digests) and the extracted text used for full-text search are structured and directly queryable. The stored PDFs and images themselves are binary and need text extraction or vision models before an LLM can consume them.
+
 ## See Also
 
-- [Zotero](../zotero/) -- reference manager with citation metadata and PDF management
-- [citations-collector](../citations-collector/) -- discovery and archival of scholarly citations
-- [agentsview](../../ai-sessions/agentsview/) -- sister kenn-io tool for AI session artifacts
+- [Zotero]({{< ref "zotero" >}}) -- reference manager with citation metadata and PDF management
+- [citations-collector]({{< ref "citations-collector" >}}) -- discovery and archival of scholarly citations
+- [agentsview]({{< ref "agentsview" >}}) -- sister kenn-io tool for AI session artifacts

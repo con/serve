@@ -55,7 +55,7 @@ For each discovered source, evaluate:
   already handles this source type
 - **Ingestion paradigm**: direct download, API extraction,
   crawling, mount-and-copy, bridging, or native DataLad
-  (reference: [Ingestion Patterns](content/concepts/ingestion-patterns/))
+  (reference: [Ingestion Patterns](/concepts/ingestion-patterns/))
 - **Privacy classification**: public, authenticated, restricted,
   institutional -- informs `distribution-restrictions` metadata
 - **AI readiness**: whether the output is structured text (ai-ready),

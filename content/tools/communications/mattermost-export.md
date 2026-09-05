@@ -10,7 +10,7 @@ integrations: ["external"]
 ai_readiness: ["ai-ready"]
 params:
   repo: "https://github.com/mattermost/mattermost"
-  homepage: "https://docs.mattermost.com/manage/bulk-export-tool.html"
+  homepage: "https://docs.mattermost.com/administration-guide/manage/bulk-export-tool.html"
   issues: "https://github.com/mattermost/mattermost/issues"
   language: "Go"
   license: "AGPL-3.0"
@@ -32,8 +32,9 @@ for archival, migration, or backup purposes.
   self-contained JSON object, making output streamable and easy to process
   incrementally.
 - **Comprehensive data coverage**: Exports teams, channels (public and
-  private), users, and posts. File attachments can be included with the
-  `--attachments` flag.
+  private), users, and posts. File attachments are included by default
+  (opt out with `--no-attachments`); archived channels and profile pictures
+  are opt-in.
 - **Server-side execution**: Export jobs run on the Mattermost server,
   ensuring data consistency and access to all content.
 - **Job management**: Export operations run as background jobs with status
@@ -42,11 +43,11 @@ for archival, migration, or backup purposes.
 ## Export Commands
 
 ```bash
-# Create an export (without attachments)
+# Create an export (attachments included by default)
 mmctl export create
 
-# Create an export with file attachments
-mmctl export create --attachments
+# Create an export without file attachments, but with archived channels
+mmctl export create --no-attachments --include-archived-channels
 
 # List available exports
 mmctl export list
@@ -55,7 +56,7 @@ mmctl export list
 mmctl export job show <job-id>
 
 # Download a completed export
-mmctl export download <export-name> --output mattermost-export.zip
+mmctl export download <export-name> mattermost-export.zip
 ```
 
 ## Output Format
@@ -72,10 +73,12 @@ records:
 {"type":"post","post":{"team":"myteam","channel":"general","user":"john.doe","message":"Hello world","create_at":1706000000000,...}}
 ```
 
-When exported with `--attachments`, file attachments are included in the
+Unless `--no-attachments` is given, file attachments are included in the
 export archive alongside the JSONL data file.
 
-## git-annex Integration
+## git-annex / DataLad Integration
+
+**Integration level: external.**
 
 Mattermost exports require manual import into git-annex since the export
 runs server-side and produces a downloadable archive. A recommended workflow:
@@ -86,7 +89,7 @@ datalad create mattermost-archive
 cd mattermost-archive
 
 # Download the export
-mmctl export download latest-export --output export.zip
+mmctl export download latest-export export.zip
 unzip export.zip -d export/
 
 # Separate text data from binary attachments
@@ -104,7 +107,7 @@ For periodic archival, wrap the download and extraction in `datalad run`:
 ```bash
 datalad run -m "Mattermost periodic export import" \
   --output export/ \
-  "mmctl export download latest-export --output export.zip && unzip -o export.zip -d export/"
+  "mmctl export download latest-export export.zip && unzip -o export.zip -d export/"
 ```
 
 ## API-Based Alternatives
@@ -131,18 +134,20 @@ API-based extraction allows incremental archival (fetching only new posts
 since a timestamp) and can be scripted for cron-based operation. The JSON
 responses have the same structured format suitable for git storage.
 
-## Current Limitations
+## Limitations
 
 - Export requires server administrator access (System Admin role).
 - Deleted messages and objects are not included in exports.
-- Some data types (webhooks, bot messages, custom integrations) may not
-  be fully captured.
+- Webhooks, bot posts, and custom integrations are not captured
+  (bot user accounts are).
 - No built-in incremental export -- each export captures the full dataset.
   For incremental archival, the REST API approach is more appropriate.
 
 ## AI Readiness
 
-**ai-ready** -- The JSONL export format is fully structured with typed fields
+**Level: ai-ready.**
+
+The JSONL export format is fully structured with typed fields
 for every record. Each line is an independent JSON object with clear type
 discrimination (`version`, `team`, `channel`, `user`, `post`), making it
 trivial to parse and filter. Post objects contain the full message text,

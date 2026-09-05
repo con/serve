@@ -18,8 +18,6 @@ params:
   last_verified: "2026-02"
 ---
 
-## Overview
-
 [Zotero](https://www.zotero.org) is a free, open-source reference manager used by millions of researchers for collecting, organizing, and citing scholarly publications. It captures bibliographic metadata from the web, stores PDFs and annotations, organizes references into collections, and generates citations and bibliographies in hundreds of formats.
 
 In the con/serve ecosystem, Zotero serves as the **human-facing reference management interface**. Researchers interact with Zotero in their daily workflow (saving papers, annotating PDFs, writing manuscripts), and the con/serve infrastructure synchronizes these collections into version-controlled DataLad datasets for long-term preservation and AI-assisted analysis.
@@ -49,9 +47,9 @@ Zotero does not natively integrate with git or DataLad. The integration is throu
 # Track in DataLad
 datalad save -m "Update bibliography from Zotero" references.bib
 
-# Export as JSON for programmatic use
-# (Zotero UI: right-click collection -> Export -> "Zotero JSON")
-datalad save -m "Update Zotero JSON export" zotero-export.json
+# Export as CSL JSON for programmatic use
+# (Zotero UI: right-click collection -> Export -> "CSL JSON")
+datalad save -m "Update CSL JSON export" zotero-export.json
 ```
 
 ### BetterBibTeX Auto-Export
@@ -75,7 +73,7 @@ Zotero's export formats are highly structured and AI-consumable:
 | Format | AI Use Case |
 |--------|------------|
 | **BibTeX/BibLaTeX** | Structured citation data, parseable by any bibtex library |
-| **Zotero JSON** | Full metadata including abstracts, tags, notes, attachments |
+| **BetterBibTeX JSON** | Full item metadata including abstracts, tags, notes, attachments (plugin export; the Web API returns the same item format) |
 | **CSL JSON** | Citation Style Language data, standardized across tools |
 | **RIS** | Interchange format, widely supported |
 
@@ -103,12 +101,12 @@ Researcher                    con/serve infrastructure
     |-- Curates collection          |
 ```
 
-## Limitations and Caveats
+## Limitations
 
 - **No native git integration**: Zotero stores its database in SQLite, not git. The export step is required for version control.
 - **Sync storage limits**: Zotero's free cloud sync provides limited storage for PDFs. Self-hosted WebDAV or local-only mode avoids this.
 - **Export lag**: BetterBibTeX auto-export triggers on collection changes but there is a small delay. Manual export is instant.
-- **Annotation format changes**: Zotero 6+ changed the annotation storage format. Older annotations may need migration.
+- **Annotations live in the database**: PDF annotations made in Zotero's built-in reader (Zotero 6+) are stored in the Zotero database, not in the PDF; they need to be exported separately to be preserved alongside the file.
 
 ## See Also
 

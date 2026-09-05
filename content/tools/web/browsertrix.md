@@ -24,11 +24,9 @@ params:
       url: "https://govarchive.us/"
 ---
 
-## Overview
-
-Browsertrix (formerly Browsertrix Crawler) is a headless browser-based web
-crawler developed by Webrecorder that creates high-fidelity WARC (Web ARChive)
-files.  Unlike traditional crawlers (wget, HTTrack) that download raw HTML,
+Browsertrix (formerly Browsertrix Cloud) is Webrecorder's crawling platform,
+built around the headless browser-based Browsertrix Crawler, which creates
+high-fidelity WARC (Web ARChive) files.  Unlike traditional crawlers (wget, HTTrack) that download raw HTML,
 Browsertrix uses a real browser engine (Chromium) to render pages, executing
 JavaScript, loading dynamic content, and capturing the page as a user would
 actually see it.
@@ -38,9 +36,9 @@ apps (SPAs), sites with lazy-loaded content, and pages that rely heavily on
 client-side rendering.  The resulting WARC files can be replayed with pixel-perfect
 fidelity using tools like ReplayWeb.page.
 
-Browsertrix is available both as a standalone Docker-based crawler
-(Browsertrix Crawler) and as a full cloud-hosted platform (Browsertrix Cloud)
-with team collaboration, scheduling, and a web UI.
+The crawler is available standalone as a Docker image (Browsertrix Crawler),
+and the Browsertrix platform wraps it with team collaboration, scheduling,
+quality review, and a web UI, either self-hosted or hosted by Webrecorder.
 
 ## Key Features
 
@@ -58,10 +56,10 @@ with team collaboration, scheduling, and a web UI.
   faster crawling of large sites.
 - **Docker-native** -- runs as a Docker container, making deployment and
   scaling straightforward.
-- **Cloud platform** -- Browsertrix Cloud adds team collaboration, crawl
+- **Platform** -- Browsertrix adds team collaboration, crawl
   scheduling, quality review, and a web-based management interface.
 
-## Basic Usage
+## Usage
 
 ### Browsertrix Crawler (Docker)
 
@@ -75,7 +73,7 @@ docker run -v $PWD/crawls:/crawls \
 
 # Output is in ./crawls/collections/
 ls crawls/collections/*/
-# archive/  indexes/  pages/
+# archive/  pages/  warc-cdx/  logs/  ...   (indexes/ with --generateCDX)
 ```
 
 ### Crawl Configuration
@@ -113,7 +111,7 @@ Each WARC file contains:
 WARC files can be replayed (viewed as the original website) using:
 - [ReplayWeb.page](https://replayweb.page/) -- client-side WARC replay in the browser
 - [pywb](https://github.com/webrecorder/pywb) -- Python-based Wayback Machine implementation
-- [OpenWayback](https://github.com/iipc/openwayback) -- Java-based Wayback Machine
+- [OpenWayback](https://github.com/iipc/openwayback) -- Java-based Wayback Machine (no longer developed; IIPC recommends pywb)
 
 ## git-annex / DataLad Integration
 
@@ -132,16 +130,16 @@ cd web-warcs
 # Configure annex for WARC files
 echo "*.warc annex.largefiles=anything" >> .gitattributes
 echo "*.warc.gz annex.largefiles=anything" >> .gitattributes
-echo "*.cdx annex.largefiles=nothing" >> .gitattributes
+echo "*.cdxj annex.largefiles=nothing" >> .gitattributes
 
-# Run a crawl
+# Run a crawl (--generateCDX writes a combined index under indexes/)
 docker run -v $PWD/crawls:/crawls \
     webrecorder/browsertrix-crawler crawl \
-    --url "https://example.com" --scopeType domain
+    --url "https://example.com" --scopeType domain --generateCDX
 
 # Import crawl results
 cp -r crawls/collections/*/archive/*.warc.gz ./warcs/
-cp crawls/collections/*/indexes/*.cdx ./indexes/
+cp crawls/collections/*/indexes/*.cdxj ./indexes/
 
 # Save with provenance
 datalad save -m "Archive example.com via Browsertrix"
@@ -154,9 +152,9 @@ datalad run -m "Crawl example.com with Browsertrix" \
     --output "warcs/" --output "indexes/" \
     'docker run -v $PWD/crawls:/crawls \
         webrecorder/browsertrix-crawler crawl \
-        --url "https://example.com" --scopeType domain && \
+        --url "https://example.com" --scopeType domain --generateCDX && \
     cp crawls/collections/*/archive/*.warc.gz warcs/ && \
-    cp crawls/collections/*/indexes/*.cdx indexes/'
+    cp crawls/collections/*/indexes/*.cdxj indexes/'
 ```
 
 ## AI Readiness
@@ -171,7 +169,7 @@ WARC files are binary archives that are not directly consumable by LLMs:
 - **Mixed content** -- a single WARC file contains HTML, CSS, JavaScript, images,
   and other resources interleaved.  Extracting just the text content requires
   parsing.
-- **CDX indexes** -- the companion CDX (Capture inDeX) files are structured text
+- **CDXJ indexes** -- the companion CDXJ (Capture inDeX, JSON variant) files are structured text
   that provides a machine-readable index of what is in the WARC.  These are
   ai-ready.
 

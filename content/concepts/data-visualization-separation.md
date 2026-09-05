@@ -34,7 +34,7 @@ The solution is **hierarchical summarization** --
 building progressively coarser summaries that let you start with an overview
 and drill into detail on demand.
 
-This is itself a [Frozen Frontier]({{< ref "/_index.md#frozen-frontiers" >}}):
+This is itself a [Frozen Frontier]({{< ref "about#frozen-frontiers" >}}):
 each summary level is a working surface
 that frees you from the burden of the level below.
 
@@ -184,7 +184,7 @@ and replace it freely when something better comes along.
   This page describes how summaries are presented;
   that page describes how they are produced and updated.
 
-- **[Frozen Frontiers]({{< ref "/_index.md#frozen-frontiers" >}})** --
+- **[Frozen Frontiers]({{< ref "about#frozen-frontiers" >}})** --
   each summarization level is a frozen frontier:
   a working surface for the next stage
   that does not require loading everything below it.

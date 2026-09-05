@@ -1,1 +1,0 @@
-../../../.claude/agents/discovery-curator.md

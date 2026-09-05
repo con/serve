@@ -18,8 +18,6 @@ params:
   last_verified: "2026-02"
 ---
 
-## Overview
-
 [PhotoPrism](https://www.photoprism.app) is a self-hosted photo management application
 built in Go with a modern web UI.
 It provides AI-powered features including face recognition, automatic content classification,
@@ -145,14 +143,14 @@ that aligns with the hierarchical summarization pattern.
 | AI classification | Yes (TensorFlow) | No | No |
 | Face recognition | Yes | No | No |
 | Map view | Yes | Yes | No |
-| Resource requirements | High (2+ GB RAM) | Low | Minimal |
+| Resource requirements | High (3 GB RAM + swap) | Low | Minimal |
 | RAW support | Yes | Yes | No |
 | Setup complexity | Moderate (needs DB) | Low | Minimal |
 | Album management | Rich (manual + auto) | Basic | Directory-based |
 
-## Limitations and Caveats
+## Limitations
 
-- **Resource hungry** -- TensorFlow-based classification requires significant RAM (2-4 GB minimum)
+- **Resource hungry** -- upstream asks for at least 2 cores, 3 GB of RAM, and 4 GB of swap for TensorFlow-based classification
 - **Write-back gap** -- album assignments and face labels live in PhotoPrism's database, not in the git-annex tree. Exporting these organizational decisions back into git-tracked metadata requires additional tooling.
 - **No deduplication awareness** -- PhotoPrism does not understand git-annex's content-addressed deduplication. If the same photo appears in multiple datasets, PhotoPrism will index it multiple times.
 - **Index rebuild time** -- initial indexing of large collections (100K+ photos) can take hours

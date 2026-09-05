@@ -39,9 +39,9 @@ but these are not version-controlled and can be lost with a disk failure or OS r
 
 ### Session Archival
 
-**[Entire.io](entire-io/)** -- Git-native session archival using shadow branches.
-Supports multiple AI tools (Claude Code, Gemini CLI, Cursor) with cross-session indexing,
-checkpoint rewind, and attribution tracking. Go CLI backed by $60M seed funding.
+**[Entire.io](entire-io/)** -- Git-native session archival as checkpoint refs
+inside the repository. Supports Claude Code, Codex, Copilot CLI, Cursor, Gemini CLI,
+OpenCode, and others, with session resume and checkpoint search. Go CLI.
 
 **[git-memento](git-memento/)** -- Stores AI session transcripts as git notes on commits.
 The lightest-touch approach: notes are invisible by default, add no branches or files,
@@ -58,13 +58,25 @@ Rust CLI with IDE decorations and enterprise dashboards.
 Reads JSONL transcripts and produces structured output for archival.
 
 **[ccexport](ccexport/)** -- Claude Code transcript export to readable formats.
-Converts raw JSONL session data to markdown and JSON.
+Converts raw JSONL session data to markdown and HTML, with secret redaction.
 
-**[SpecStory](specstory/)** -- VS Code/Cursor extension that automatically saves
-AI coding sessions as markdown files in a `.specstory/` directory.
+**[SpecStory](specstory/)** -- Cursor and VS Code Copilot extensions, plus an open-source
+CLI wrapper for terminal agents (Claude Code, Codex, Gemini CLI, and others), that
+automatically save AI coding sessions as markdown files in `.specstory/history/`.
 
 **[Claude Code Hooks](claude-code-hooks/)** -- Built-in lifecycle hooks in Claude Code itself.
 PreCompact, Stop, and SessionEnd events can trigger automatic session archival.
+
+### Session Analytics and Review
+
+**[AgentsView](agentsview/)** -- Local-first search and analytics over the session
+logs of 40+ coding agents, indexed into SQLite with full-text and semantic search.
+A discovery layer over the files the tools above archive, not an archival tool itself.
+
+**[roborev](roborev/)** -- Git-hook-driven review of every AI-generated commit,
+kept in a local review database with JSON export.
+Records the quality-assurance side of AI-assisted development
+alongside the conversations that produced the code.
 
 ## Common Patterns
 
@@ -75,8 +87,8 @@ AI session archival tools generally follow one of three strategies:
    Tools like cctrace and ccexport take this approach.
 
 2. **In-situ capture** -- Hook into the AI tool's lifecycle to capture sessions
-   as they happen, storing them directly in git.
-   Entire.io and Claude Code Hooks take this approach.
+   as they happen, storing them directly in git or in files.
+   Entire.io, SpecStory, and Claude Code Hooks take this approach.
 
 3. **Commit-time attachment** -- Record session context at commit time
    using native git metadata (notes).

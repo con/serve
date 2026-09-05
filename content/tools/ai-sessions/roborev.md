@@ -29,7 +29,7 @@ would otherwise go unreviewed.
 On each commit, roborev:
 
 1. Extracts the diff and commit message
-2. Submits them to a configured LLM for review
+2. Hands them to a configured AI coding agent (Claude Code, Codex, Ollama, and others) for review, as a background job
 3. Stores the review result in a local database (`~/.roborev/`)
 4. Optionally applies auto-fixes or feeds findings back to the agent
 
@@ -51,10 +51,12 @@ provider tokens, usernames, and IP geolocation.
 
 ## CI Integration
 
-roborev can export benchmark and CI metrics, and optionally integrates with
-[kata](../../code-artifacts/kata/) for correlating review findings with issue tracking.
+roborev can export CI metrics and costs (`roborev export ci-metrics|ci-costs`), and optionally integrates with
+[kata]({{< ref "kata" >}}) for correlating review findings with issue tracking.
 
-## Relevance to Archival
+## git-annex / DataLad Integration
+
+**Integration level: external.**
 
 roborev creates a **provenance and accountability trail** for AI-generated code:
 which agent authored which commit, what issues were flagged in review, and
@@ -67,9 +69,15 @@ The review database is a natural candidate for inclusion in a DataLad dataset
 alongside the code repository it describes, though no established workflow
 for this exists yet.
 
+## AI Readiness
+
+**Level: ai-ready.**
+
+Review findings are structured records in SQLite, exportable as JSON with `roborev export reviews`. They are text throughout -- diffs, commit messages, and the reviewing model's output -- and need no further processing for LLM consumption.
+
 ## See Also
 
-- [kata](../../code-artifacts/kata/) -- local issue tracking for AI-assisted work
-- [agentsview](../agentsview/) -- session analytics across 40+ agents
-- [git-ai](../git-ai/) -- line-level AI authorship attribution via git notes
-- [entire-io](../entire-io/) -- git-native session archival
+- [kata]({{< ref "kata" >}}) -- local issue tracking for AI-assisted work
+- [agentsview]({{< ref "agentsview" >}}) -- session analytics across 40+ agents
+- [git-ai]({{< ref "git-ai" >}}) -- line-level AI authorship attribution via git notes
+- [entire-io]({{< ref "entire-io" >}}) -- git-native session archival

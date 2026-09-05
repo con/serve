@@ -1,1 +1,0 @@
-../../../.claude/agents/pipeline-operator.md

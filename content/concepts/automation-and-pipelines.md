@@ -192,7 +192,7 @@ from agent-assisted to fully automated.
 ### Branch-Based Workflow Orchestration (BIDS-flux)
 
 [BIDS-flux](https://bids-flux-docs.readthedocs.io/en/latest/)
-(Basile Pinsard, UNB)
+(Basile Pinsard, UNF/CRIUGM, Université de Montréal)
 demonstrates a powerful pattern for pipeline orchestration using git branches:
 
 - **Each data sample is a feature branch** --
@@ -219,7 +219,7 @@ and git-annex content tracking ensures large files
 are handled without bloating the repository.
 
 See also the
-[BIDS-flux talk by Basile Pinsard](https://datasets.datalad.org/repronim/ReproTube/DataLad/videos/2025/11/2025-11-12_Basile-Pinsard-BIDS-flux/video.en.vtt)
+[BIDS-flux talk by Basile Pinsard at Distribits 2025](https://www.distribits.live/talks/2025/pinsard-bids-flux/)
 for a walkthrough of this architecture.
 
 ## Remote Compute Offloading
@@ -242,9 +242,8 @@ Its `datalad-pair` orchestrator syncs a local dataset to a remote machine
 runs the analysis there (submitting to HTCondor, PBS, SLURM, or local shell),
 and fetches results back.
 Used by [OpenNeuroDerivatives](https://github.com/OpenNeuroDerivatives)
-to run fMRIPrep and MRIQC across hundreds of OpenNeuro datasets
-on the TACC Frontera supercomputer -- though that project has not yet
-exercised the full remote-offloading path.
+to run fMRIPrep and MRIQC across roughly 600 OpenNeuro datasets
+(990+ derivative datasets) on the TACC Frontera supercomputer.
 
 **[FAIRly big](https://www.nature.com/articles/s41597-022-01163-2)** --
 A DataLad-based framework for reproducible processing of large-scale data collections.
@@ -321,8 +320,10 @@ which pipeline steps have succeeded or failed or are awaiting human review,
 and the overall health of the vault
 (storage usage, annex content distribution, broken links).
 [con/tinuous]({{< ref "tools/code-artifacts/tinuous" >}})
-can archive CI logs from Forgejo into the vault itself,
-making operational history a first-class archived artifact.
+archives CI logs from GitHub Actions and other hosted CI services into the vault,
+making operational history a first-class archived artifact;
+it does not yet speak to Forgejo Actions, so the same for a self-hosted
+Forgejo-aneksajo deployment remains to be worked out.
 [Neurobagel Digest](https://github.com/neurobagel/digest)
 demonstrates interactive dashboarding of processing status TSVs --
 a pattern directly applicable here

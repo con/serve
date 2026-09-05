@@ -146,7 +146,7 @@ and clarifying provenance.
 A BIDS dataset is also a *project*:
 `dataset_description.json` at the root, `participants.tsv` for the subject registry,
 `code/`, `docs/`, `CHANGES`.
-The [EMBER study template](https://github.com/emberarchive/study-template)
+The [EMBER study template](https://github.com/brain-bbqs/study-template)
 makes this explicit: `code/`, `derivatives/`, `docs/`, `logs/`, `scratch/`, `sourcedata/raw/`.
 
 **[Nipoppy](https://nipoppy.readthedocs.io/)** extends BIDS
@@ -333,7 +333,7 @@ but Forgejo or Gitea has no concept of sub-repositories --
 only `{org}/{repo}`.
 
 This is an **open research question**
-explored in the [self-contain-github-repo](/projects/self-contain-github-repo/) project.
+explored in the [self-contain-github-repo](https://github.com/con/serve/tree/master/projects/self-contain-github-repo) project.
 The options under consideration include:
 
 - **Satellite repos with naming convention** --
@@ -355,7 +355,8 @@ The options under consideration include:
   but not the deeper nesting the vault uses.
 
 For parallel discussion about naming within nested structures,
-see [bids-specification#2191](https://github.com/bids-standard/bids-specification/issues/2191).
+see [bids-specification#2191](https://github.com/bids-standard/bids-specification/pull/2191),
+which adds `rawbids/`, `phenotype/`, and sibling top-level directories to BIDS study datasets.
 
 ## See Also
 

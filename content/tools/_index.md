@@ -37,4 +37,4 @@ A tool may handle multiple media types.
 - [Cloud Storage](cloud-storage/) -- Google Drive, Dropbox, S3, and 70+ providers via rclone
 - [Publications](publications/) -- Scholarly citations, PDFs, reference management
 - [Web](web/) -- Web page and site archival
-- [AI Sessions](ai-sessions/) -- Claude Code, Cursor, Entire.io session capture
+- [AI Sessions](ai-sessions/) -- Claude Code, Cursor, and multi-agent session capture, attribution, and review

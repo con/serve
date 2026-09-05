@@ -18,8 +18,6 @@ params:
   last_verified: "2026-02"
 ---
 
-## Overview
-
 HTTrack is a long-established, free utility for downloading entire websites from
 the internet to a local directory, building recursively all directories, getting
 HTML, images, and other files from the server to your computer.  The result is a
@@ -44,15 +42,15 @@ original site's URL hierarchy.
   new or changed files.
 - **Configurable scope** -- control crawl depth, file size limits, URL
   inclusion/exclusion patterns, and allowed file types.
-- **Authentication support** -- handles cookies, HTTP authentication, and
-  form-based login.
+- **Authentication support** -- handles cookies and HTTP authentication;
+  form posts can be captured with `--catchurl`.
 - **Bandwidth control** -- configurable connection limits, download rate
   limits, and retry settings.
-- **GUI and CLI** -- graphical interface (WinHTTrack) on Windows, command-line
-  interface on all platforms.
+- **GUI and CLI** -- graphical interfaces (WinHTTrack on Windows, WebHTTrack
+  in the browser on Linux/macOS), command-line interface on all platforms.
 - **Proxy support** -- works through HTTP/SOCKS proxies.
 
-## Basic Usage
+## Usage
 
 ```bash
 # Mirror a website
@@ -67,12 +65,12 @@ httrack --update -O "./mirrors/docs-example"
 # Mirror with restrictions
 httrack "https://example.com" \
     -O "./mirrors/example" \
-    --max-size=10000000 \        # skip files > 10MB
+    --max-files=10000000 \       # skip non-HTML files > 10MB
     --depth=3 \                  # limit crawl depth
     -*.zip -*.tar.gz             # exclude archives
 ```
 
-## Output Structure
+## Output Format
 
 HTTrack produces a directory tree that mirrors the site's URL structure:
 

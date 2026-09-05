@@ -83,13 +83,13 @@ The [BIDS](https://bids-specification.readthedocs.io/) (Brain Imaging Data Struc
 |--------|------|-------------------|
 | [OpenNeuro](https://openneuro.org) | `datalad push` / OpenNeuro CLI | BIDS datasets |
 | [DANDI](https://dandiarchive.org) | [dandi-cli](https://dandi.readthedocs.io/) | NWB neurophysiology data |
-| [EMBER](https://ember.science) | TODO: verify submission tool | Multi-modal brain data |
+| [EMBER](https://emberarchive.org) | Submission tooling not yet evaluated | Multi-modal brain-behavior data (BRAIN Initiative BBQS) |
 | [OSF](https://osf.io) | `datalad-osf` | Any dataset |
 
 ### Metadata Standards
 
 - **BIDS** -- file naming, directory structure, JSON sidecars
-- **NWB** (Neurodata Without Borders) -- electrophysiology data format
+- **NWB** (Neurodata Without Borders) -- neurophysiology data format
 - **NIDM** (Neuroimaging Data Model) -- provenance and results reporting
 
 ## Other Potential Domain Extensions

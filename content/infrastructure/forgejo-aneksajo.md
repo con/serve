@@ -8,11 +8,11 @@ tags: ["CON-ecosystem", "MIH", "forgejo", "git-annex", "self-hosted", "forge", "
 integrations: ["native-datalad"]
 ai_readiness: ["ai-partial"]
 params:
-  repo: "https://codeberg.org/matrss/forgejo-aneksajo"
-  homepage: "https://codeberg.org/matrss/forgejo-aneksajo"
-  issues: "https://codeberg.org/matrss/forgejo-aneksajo/issues"
+  repo: "https://codeberg.org/forgejo-aneksajo/forgejo-aneksajo"
+  homepage: "https://codeberg.org/forgejo-aneksajo/forgejo-aneksajo"
+  issues: "https://codeberg.org/forgejo-aneksajo/forgejo-aneksajo/issues"
   language: "Go"
-  license: "MIT"
+  license: "GPL-3.0-or-later"
   maturity: "beta"
   last_verified: "2026-02"
   examples:
@@ -24,9 +24,9 @@ params:
       url: "https://hub.edu.datalad.org"
 ---
 
-**Forgejo-Aneksajo** is a fork of [Forgejo](https://forgejo.org) -- itself a community fork of Gitea -- that adds native support for the [git-annex](https://git-annex.branchable.com/) protocol. This means a Forgejo-Aneksajo instance can serve as a full git-annex remote: clients can `git annex copy --to` and `git annex get --from` the server, not just push and pull git refs.
+**Forgejo-Aneksajo** is a fork of [Forgejo](https://forgejo.org) -- itself a community fork of Gitea -- that adds native support for [git-annex](https://git-annex.branchable.com/). This means a Forgejo-Aneksajo instance can serve as a full git-annex remote: clients can `git annex copy --to` and `git annex get --from` the server, not just push and pull git refs.
 
-This is the critical missing piece in the self-hosted research infrastructure stack. Standard forges (GitHub, GitLab, Gitea, Forgejo) handle git repositories well but choke on git-annex content because they do not understand the annex protocol. Forgejo-Aneksajo solves this by implementing git-annex's HTTP-based protocol directly in the forge, making annexed content a first-class citizen alongside code and metadata.
+This is the critical missing piece in the self-hosted research infrastructure stack. Standard forges (GitHub, GitLab, Gitea, Forgejo) handle git repositories well but choke on git-annex content because they do not understand the annex protocol. Forgejo-Aneksajo solves this by supporting `git-annex-shell` on the server side (over SSH), with read-only "dumb HTTP" access and, in newer releases, git-annex's p2phttp protocol on top, making annexed content a first-class citizen alongside code and metadata. It is a soft fork: releases are tagged `v<forgejo-version>-git-annex<n>` and track upstream Forgejo.
 
 ## Why This Matters
 
@@ -39,9 +39,9 @@ This split works but it creates operational overhead, complicates access control
 
 ## Key Features
 
-### Native git-annex Protocol
+### Native git-annex Support
 
-Forgejo-Aneksajo implements the git-annex HTTP protocol, allowing clients to:
+With `[annex] ENABLED = true` in `app.ini`, Forgejo-Aneksajo allows clients to:
 
 - **Push annexed content** to the server using `git annex copy --to origin`
 - **Pull annexed content** from the server using `git annex get`
@@ -62,9 +62,9 @@ The Forgejo web interface is extended to handle git-annex content gracefully:
 A Forgejo-Aneksajo instance can serve as a DataLad sibling, meaning:
 
 ```bash
-# Create a sibling on your Forgejo-Aneksajo instance
-datalad create-sibling-gogs --name lab-forgejo \
-    --api https://forgejo.lab.example.org/api/v1 \
+# Create a sibling on your Forgejo-Aneksajo instance (Forgejo is Gitea-API compatible)
+datalad create-sibling-gitea --name lab-forgejo \
+    --api https://forgejo.lab.example.org \
     --credential lab-token
 
 # Push everything -- git refs AND annexed content
@@ -87,9 +87,7 @@ These features make it suitable as the *primary forge* for a research group, not
 
 ## Architecture
 
-Forgejo-Aneksajo extends Forgejo at the HTTP handler level. When a client initiates a git-annex protocol exchange, the server recognizes the request pattern and routes it to the annex storage backend instead of the standard git HTTP handler.
-
-Annexed content is stored on the server's filesystem in the same content-addressed layout that git-annex uses locally (`.git/annex/objects/`). This means standard filesystem-level backup tools work, and storage can be pointed at any mountable filesystem (local disk, NFS, FUSE-mounted cloud storage).
+Forgejo-Aneksajo keeps Forgejo's repository storage and adds git-annex on top: when `git-annex-shell` is enabled, annexed content is stored under the server-side repository in git-annex's usual object layout, so the same filesystem-level backup tools that cover the git repositories also cover the annexed content.
 
 ## Role in the con/serve Stack
 
@@ -120,29 +118,22 @@ Forgejo-Aneksajo is the **centerpiece** of the con/serve infrastructure layer:
 
 ## Installation
 
-Forgejo-Aneksajo can be deployed as a standalone binary, a Docker container, or through the [Lab-in-a-Box]({{< ref "lab-in-a-box" >}}) pyinfra deployment.
+Forgejo-Aneksajo can be deployed as a container image, from the [release binaries](https://codeberg.org/forgejo-aneksajo/forgejo-aneksajo/releases), or through the [Lab-in-a-Box]({{< ref "lab-in-a-box" >}}) pyinfra deployment.
 
-### Docker
+### Container
 
-```bash
-docker pull codeberg.org/matrss/forgejo-aneksajo:latest
-docker run -d --name forgejo-aneksajo \
-    -p 3000:3000 -p 2222:22 \
-    -v /srv/forgejo:/data \
-    codeberg.org/matrss/forgejo-aneksajo:latest
-```
-
-### Binary
-
-Download from the [releases page](https://codeberg.org/matrss/forgejo-aneksajo/releases) and run:
-
-```bash
-./forgejo-aneksajo web
-```
+Images are published on Docker Hub as `mihanke/forgejo-aneksajo` and, as used by Lab-in-a-Box, at `hub.datalad.org/forgejo/forgejo-aneksajo:<version>-rootless-amd64`. Lab-in-a-Box runs them as rootless Podman containers behind Caddy.
 
 ### Configuration
 
-Forgejo-Aneksajo uses the same configuration format as Forgejo (`app.ini`). The git-annex functionality is enabled by default and requires no additional configuration beyond standard Forgejo setup.
+Forgejo-Aneksajo uses the same configuration format as Forgejo (`app.ini`). git-annex support must be switched on explicitly:
+
+```ini
+[annex]
+ENABLED = true
+```
+
+Without it the instance behaves like a vanilla Forgejo.
 
 ## AI Readiness
 
@@ -150,10 +141,9 @@ Forgejo-Aneksajo uses the same configuration format as Forgejo (`app.ini`). The 
 
 The git metadata, issue discussions, and repository information served through the API and web interface are structured and AI-consumable. However, the annexed content itself (large files, binaries, media) requires domain-specific processing before AI systems can work with it. The Forgejo API provides programmatic access to repository metadata, making it straightforward to build automated workflows.
 
-## Limitations and Caveats
+## Limitations
 
 - **Beta status**: Forgejo-Aneksajo tracks upstream Forgejo releases but with a delay. Breaking changes in Forgejo may take time to propagate.
-- **git-annex version compatibility**: The server's git-annex protocol support targets a specific protocol version. Very old or very new git-annex clients may have compatibility issues.
 - **Storage management**: Unlike cloud-native object stores, the annexed content storage is filesystem-based. Large deployments need to plan storage capacity and backup strategies.
 - **Single-instance**: No built-in clustering or high-availability. For critical deployments, standard infrastructure HA patterns (load balancer, shared storage, database replication) must be applied manually.
 

@@ -2,7 +2,7 @@
 title: "kata"
 date: 2026-08-31
 description: "Local-first issue tracking for AI-assisted software work, agent-friendly CLI and terminal UI"
-summary: "Durable task ledger for AI coding agents and human supervisors. Issues live in local SQLite under KATA_HOME; repos stay clean. Agent-friendly CLI with optional GitHub sync and team federation."
+summary: "Durable task ledger for AI coding agents and human supervisors. Issues live in local SQLite under KATA_HOME; repos stay clean. Agent-friendly CLI and MCP server with optional one-way GitHub sync and team federation."
 categories: ["Code Artifacts"]
 tags: ["issue-tracking", "sqlite", "local-first", "ai-agents", "cli", "tui"]
 media_types: ["code-artifacts"]
@@ -13,8 +13,8 @@ params:
   homepage: "https://github.com/kenn-io/kata"
   issues: "https://github.com/kenn-io/kata/issues"
   language: "Go"
-  license: "unknown"
-  maturity: "beta"
+  license: "MIT"
+  maturity: "stable"
   last_verified: "2026-08"
 ---
 
@@ -35,19 +35,21 @@ A single Go binary with no runtime dependencies handles the full lifecycle.
 
 - Agents create, claim, relate, and close issues with evidence attached
 - Human TUI and browser UI for oversight and triage
-- GitHub sync (bidirectional, described in the operations guide)
+- GitHub sync (one-way: GitHub issues are mirrored into kata and stay GitHub-owned)
 - Optional remote daemon mode with PostgreSQL backend for team sharing
 - Federation for distributed deployments
 - In-process HTTP service for embedding in Go applications
 
 ## Relation to Other kenn-io Tools
 
-kata integrates with [roborev](../../ai-sessions/roborev/) for correlating
+kata integrates with [roborev]({{< ref "roborev" >}}) for correlating
 code review findings with issue records.
-[forge](../forge/) provides the broader maintainer console context (PRs, CI)
+[forge]({{< ref "forge" >}}) provides the broader maintainer console context (PRs, CI)
 within which kata issues live.
 
-## Relevance to Archival
+## git-annex / DataLad Integration
+
+**Integration level: external.**
 
 kata's local SQLite store is a natural archival target: issue history, agent
 activity records, and evidence attachments can be snapshotted into a DataLad
@@ -57,9 +59,15 @@ and the commit graph.
 
 No established workflow for DataLad-native kata archival exists yet.
 
+## AI Readiness
+
+**Level: ai-ready.**
+
+Issue records are structured rows in SQLite, and the CLI is designed for agents to create, claim, and close issues programmatically. The evidence attached to issues is text (logs, links, notes) that an LLM can read directly.
+
 ## See Also
 
-- [forge](../forge/) -- local-first maintainer console for PRs and issues across forges
-- [git-bug](../git-bug/) -- distributed issue tracking stored directly in git objects
-- [github-backup](../github-backup/) -- full JSON export of GitHub Issues and PRs
-- [roborev](../../ai-sessions/roborev/) -- AI code review database, integrates with kata
+- [forge]({{< ref "forge" >}}) -- local-first maintainer console for PRs and issues across forges
+- [git-bug]({{< ref "git-bug" >}}) -- distributed issue tracking stored directly in git objects
+- [github-backup]({{< ref "github-backup" >}}) -- full JSON export of GitHub Issues and PRs
+- [roborev]({{< ref "roborev" >}}) -- AI code review database, integrates with kata

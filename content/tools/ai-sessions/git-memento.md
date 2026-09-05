@@ -69,8 +69,8 @@ Key properties:
   unless passed `--notes` or configured via `notes.displayRef`
 - **Not cloned by default** -- `git clone` does not fetch notes
   unless the refspec is configured (e.g., `fetch = +refs/notes/*:refs/notes/*`)
-- **Survive rebases** -- with git hooks, notes can be preserved
-  across history rewrites
+- **Survive rebases** -- git can be configured (`notes.rewriteRef`)
+  to carry notes across history rewrites
 - **Native to git** -- no external tools, databases, or branches required
 
 This means a repository using git-memento looks completely normal
@@ -93,13 +93,15 @@ git log --notes main..HEAD
 
 ## CI Integration
 
-git-memento includes a **GitHub Action** (`action.yml`) with two modes:
+git-memento includes a **GitHub Action** (`action.yml`) with three modes:
 
 - **`comment` mode** -- Posts session notes as comments
   on the corresponding commits in GitHub, making them visible in the web UI.
 - **`gate` mode** -- CI gate that fails the workflow
   if commits in the PR range lack session notes.
   Enforces the policy that every AI-assisted commit must have its session recorded.
+- **`merge-carry` mode** -- carries the notes of a PR's commits onto the
+  merge commit and pushes `refs/notes/*`, so squash merges keep their transcripts.
 
 ### Audit Command
 
@@ -122,16 +124,18 @@ without affecting each other's local state.
 
 ## How It Differs from Other Tools
 
-| Aspect | git-memento (git notes) | Entire.io (shadow branches) | Git AI (authorship notes) |
+| Aspect | git-memento (git notes) | Entire.io (checkpoint refs) | Git AI (authorship notes) |
 |---|---|---|---|
-| **Storage** | `refs/notes/commits` | Orphan branches + metadata branch | `refs/notes/ai` + `.git/ai/` |
-| **Granularity** | Conversation markdown | Full JSONL transcripts + snapshots | Line-level authorship |
+| **Storage** | `refs/notes/commits` | `refs/entire/checkpoints/*` | `refs/notes/ai` + `.git/ai/` |
+| **Granularity** | Conversation markdown | Per-checkpoint transcripts and metadata | Line-level authorship |
 | **Working tree impact** | None | None | None |
-| **Clone visibility** | Hidden unless notes fetched | Hidden unless branches fetched | Hidden unless notes fetched |
+| **Clone visibility** | Hidden unless notes fetched | Hidden unless refs fetched | Hidden unless notes fetched |
 | **Rewind/resume** | No | Yes | No |
-| **CI enforcement** | GitHub Action gate mode | Pre-push hook | Enterprise dashboard |
+| **CI enforcement** | GitHub Action gate mode | Push hook | Team dashboard |
 
-## Integration with con/serve
+## git-annex / DataLad Integration
+
+**Integration level: git-only.**
 
 For DataLad datasets, git notes integrate naturally:
 they are stored as refs in the git repository
@@ -141,13 +145,13 @@ A typical workflow:
 
 1. Develop with Claude Code or Codex
 2. Commit via `git memento commit <session-id> -m "message"`
-3. Configure the remote to push notes: `git config remote.origin.push "+refs/notes/*:refs/notes/*"`
-4. `datalad push` propagates both code and session notes
+3. `git memento push` (or `share-notes`) pushes `refs/notes/*` and configures the fetch refspec
+4. `datalad push` propagates the code; the notes travel through the refspec set up in step 3
 
 The notes approach is particularly well-suited
 to repositories where minimal footprint matters --
 small datasets, scripts, and configuration repos
-where adding shadow branches or metadata infrastructure
+where adding checkpoint refs or other infrastructure
 would be disproportionate.
 
 ## Limitations
@@ -155,16 +159,23 @@ would be disproportionate.
 - **GitHub does not render git notes** in its web UI by default.
   The GitHub Action `comment` mode works around this
   by posting notes as commit comments.
-- **Notes are fragile across rebases** without hook support.
-  git-memento provides hooks to preserve notes during history rewrites.
+- **Notes are fragile across rebases** unless git is told to rewrite them.
+  `git memento notes-rewrite-setup` sets the `notes.rewrite*` configuration,
+  and `notes-carry` moves notes across squashes.
 - **No session rewind** -- notes are metadata-only;
   they do not capture file state snapshots.
 - **Provider coverage** is currently limited to Codex and Claude Code.
 
+## AI Readiness
+
+**Level: ai-ready.**
+
+Notes are cleaned markdown transcripts attached to commits. `git log --notes` or `git notes show` yields text that an LLM can read as-is, with the commit hash providing the link to the code change it explains.
+
 ## See Also
 
-- [Entire.io](../entire-io/) -- Full session archival with shadow branches and rewind
-- [Git AI](../git-ai/) -- Line-level AI authorship attribution
-- [cctrace](../cctrace/) -- Lightweight Claude Code transcript capture
-- [ccexport](../ccexport/) -- Claude Code transcript export to readable formats
+- [Entire.io]({{< ref "entire-io" >}}) -- Full session archival as checkpoint refs, with resume
+- [Git AI]({{< ref "git-ai" >}}) -- Line-level AI authorship attribution
+- [cctrace]({{< ref "cctrace" >}}) -- Lightweight Claude Code transcript capture
+- [ccexport]({{< ref "ccexport" >}}) -- Claude Code transcript export to readable formats
 - [Git Content Store as Side-Channel Databases]({{< ref "concepts/git-content-store-side-channels" >}}) -- git notes compared with the other ref-based side channels

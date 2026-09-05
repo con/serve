@@ -69,7 +69,9 @@ msgvault exposes an MCP server, allowing AI agents to search and retrieve
 message content programmatically without requiring network access to the
 original provider.
 
-## Relation to git-annex / DataLad Archival
+## git-annex / DataLad Integration
+
+**Integration level: external.**
 
 msgvault manages its own content-addressed attachment store rather than
 delegating to git-annex.
@@ -87,11 +89,17 @@ for this exists yet.
 | ------------------ | ---------------------- | ------------ | ----------- | --------------- |
 | msgvault           | Email + multi-platform | SQLite+DuckDB | yes         | yes (Ollama)    |
 | slackdump          | Slack only             | JSON files   | yes         | no              |
-| tg-archive         | Telegram only          | HTML/JSON    | yes         | no              |
-| conversations      | SMS/MMS (Android)      | DataLad      | yes         | no              |
+| tg-archive         | Telegram only          | SQLite + HTML | yes        | no              |
+| con/versations     | Matrix only            | Plain text files | yes     | no              |
+
+## AI Readiness
+
+**Level: ai-ready.**
+
+Messages are stored as structured rows in SQLite with FTS5 full-text search, optional vector search, and an MCP server through which agents query the archive directly. Attachments are kept as content-addressed binary files and need separate processing (PDF text extraction, OCR, transcription) before an LLM can use them.
 
 ## See Also
 
-- [slackdump](../slackdump/) -- Slack-specific archival with more complete data coverage
-- [conversations](../conversations/) -- SMS archival with native DataLad integration
-- [tg-archive](../tg-archive/) -- Telegram channel archival
+- [slackdump]({{< ref "slackdump" >}}) -- Slack-specific archival with more complete data coverage
+- [con/versations]({{< ref "conversations" >}}) -- Matrix room archival to plain text files
+- [tg-archive]({{< ref "tg-archive" >}}) -- Telegram group archival

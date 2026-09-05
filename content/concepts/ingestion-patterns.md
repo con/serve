@@ -72,9 +72,9 @@ export/
 Crawlers navigate web pages, follow links, and download content they find. Unlike direct download (which targets known URLs), crawlers discover URLs as they traverse the source.
 
 **Examples:**
-- [datalad-crawler](https://github.com/datalad/datalad-crawler) -- DataLad extension for web crawling with annex integration
+- [datalad-crawler]({{< ref "datalad-crawler" >}}) -- DataLad extension for web crawling with annex integration
 - [ArchiveBox]({{< ref "archivebox" >}}) -- web page archival with multiple output formats
-- [wget](https://www.gnu.org/software/wget/) / [HTTrack](https://www.httrack.com/) -- general-purpose web crawlers
+- [wget](https://www.gnu.org/software/wget/) / [HTTrack]({{< ref "httrack" >}}) -- general-purpose web crawlers
 
 **Characteristics:**
 - URL discovery is dynamic -- the set of content is not known upfront
@@ -97,12 +97,15 @@ Some sources are best accessed as a mounted filesystem rather than through an AP
 **Characteristics:**
 - The source appears as a local directory
 - Standard Unix tools (rsync, cp, find) can be used
-- git-annex's `import` command can ingest from a directory:
+- git-annex can ingest from a directory, either with the legacy
+  `git annex import <path>` (which moves files out of the source unless
+  `--duplicate` is given) or, preferably, by registering the directory as a
+  special remote with `importtree=yes` and importing from it:
 
 ```bash
 # Import from a mounted cloud drive
 rclone mount gdrive:shared-data /mnt/gdrive &
-git annex import /mnt/gdrive/project-files --to main
+git annex import --duplicate /mnt/gdrive/project-files
 ```
 
 - Useful when the source does not have a structured API

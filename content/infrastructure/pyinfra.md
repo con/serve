@@ -20,8 +20,6 @@ params:
       url: "https://hub.psychoinformatics.de/lab-in-a-box/liab-deployments"
 ---
 
-## Overview
-
 [pyinfra](https://pyinfra.com) is an infrastructure automation tool that uses Python to define and execute deployments. It connects to target machines over SSH (or locally) and executes operations to install packages, configure services, manage files, and orchestrate multi-service deployments.
 
 pyinfra occupies the same space as Ansible but uses Python directly instead of YAML. This makes deployment definitions testable, composable, and familiar to research teams that already work in Python.

@@ -13,12 +13,10 @@ params:
   homepage: "https://github.com/git-bug/git-bug"
   issues: "https://github.com/git-bug/git-bug/issues"
   language: "Go"
-  license: "GPL-3.0"
+  license: "GPL-3.0-or-later"
   maturity: "stable"
   last_verified: "2026-02"
 ---
-
-## Overview
 
 git-bug is a standalone, distributed bug tracker that embeds directly inside a git repository.
 Instead of relying on a centralized service (GitHub Issues, Jira, etc.), every bug, comment,
@@ -36,9 +34,9 @@ can be distributed across any number of remotes without a single point of failur
   edits and conflict-free merges (similar to CRDTs).
 - **Offline-first** -- create, edit, and search bugs without network access.
   Changes sync when you push/pull.
-- **Bidirectional bridges** -- import and export bugs to/from GitHub, GitLab, Jira, and
-  Launchpad.  Bridges maintain identity mappings so round-trips are clean.
-- **Rich CLI and TUI** -- `git bug ls`, `git bug show`, `git bug add`, plus an
+- **Bidirectional bridges** -- import and export bugs to/from GitHub, GitLab, and
+  Jira (Launchpad is import-only).  Bridges maintain identity mappings so round-trips are clean.
+- **Rich CLI and TUI** -- `git bug` (list), `git bug bug show`, `git bug bug new`, plus an
   interactive terminal UI (`git bug termui`).
 - **Web UI** -- built-in GraphQL API and web interface (`git bug webui`).
 - **Incremental bridge sync** -- bridges remember their last sync point and only
@@ -70,7 +68,7 @@ To archive a project's issues into a DataLad dataset:
 
 1. **Use the bridge to import issues** from GitHub/GitLab/Jira into the repo:
    ```bash
-   git bug bridge configure --name github-bridge --target github \
+   git bug bridge new --name github-bridge --target github \
        --owner ORG --project REPO --token "$GITHUB_TOKEN"
    git bug bridge pull github-bridge
    ```
@@ -88,7 +86,7 @@ Because bugs are in git refs, `datalad save` will not directly track them
 for inclusion in the tracked tree:
 
 ```bash
-git bug ls -f json > .bugs/bugs.json
+git bug --format json > .bugs/bugs.json
 datalad save -m "Update bug tracker export" .bugs/
 ```
 
@@ -98,7 +96,7 @@ datalad save -m "Update bug tracker export" .bugs/
 
 git-bug's data is structured text throughout:
 
-- `git bug ls -f json` produces machine-readable JSON with full bug metadata
+- `git bug --format json` produces machine-readable JSON with full bug metadata
   (title, status, labels, author, timestamps, comments).
 - The GraphQL API provides typed, queryable access to all bug data.
 - Comments are plain text or markdown -- directly consumable by LLMs.

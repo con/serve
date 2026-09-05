@@ -80,18 +80,20 @@ mysite/
   data.sqlite        # Message database
   site/
     index.html
-    2026/
-      01/
-        15.html
-      ...
+    2026-01.html       # one page per month; days are anchors within it
+    2026-02.html
+    ...
     static/
-    rss.xml
+    index.rss
+    index.atom
 ```
 
 The SQLite database contains structured message data that can be queried
 directly for programmatic access.
 
-## git Integration
+## git-annex / DataLad Integration
+
+**Integration level: git-only.**
 
 Since tg-archive produces static files, the output integrates directly with
 git. The generated HTML and SQLite database can be committed to a repository:
@@ -134,7 +136,9 @@ echo 'site/static/** annex.largefiles=(largerthan=100kb)' >> .gitattributes
 
 ## AI Readiness
 
-**ai-ready** -- The SQLite database provides fully structured message data
+**Level: ai-ready.**
+
+The SQLite database provides fully structured message data
 with typed fields for timestamps, sender information, message text, reply
 relationships, and media references. The database can be queried directly
 with SQL or exported to JSON for ingestion by language models. The generated
@@ -142,7 +146,7 @@ HTML pages also contain the full message text in a parseable structure.
 Media files (photos, documents) would need separate processing for content
 extraction.
 
-## Considerations
+## Limitations
 
 - The project maintainer has indicated reduced active development, though
   pull requests are still reviewed.

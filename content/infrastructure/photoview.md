@@ -18,8 +18,6 @@ params:
   last_verified: "2026-02"
 ---
 
-## Overview
-
 [Photoview](https://photoview.github.io) is a lightweight, self-hosted photo gallery
 built in Go with a React frontend.
 It is designed for photographers who already have their photos organized in directories
@@ -107,12 +105,12 @@ See the comparison table in [PhotoPrism]({{< ref "photoprism#comparison-with-alt
 Photoview occupies the "low resource, low complexity" end of the spectrum:
 it does less, but what it does, it does simply and reliably.
 
-## Limitations and Caveats
+## Limitations
 
 - **No AI classification** -- unlike PhotoPrism, Photoview does not use machine learning for content classification. You get what EXIF provides.
 - **Basic face detection** -- detects faces but clustering/labeling is less refined than PhotoPrism
 - **No smart albums** -- albums are directory-based only, no automatic grouping by content
-- **SQLite/MySQL dependency** -- requires a database for its index, though SQLite is sufficient for personal use
+- **Database dependency** -- requires SQLite, MariaDB, or PostgreSQL for its index, though SQLite is sufficient for personal use
 
 ## See Also
 

@@ -23,7 +23,7 @@ params:
 
 **gallery-dl** is a command-line tool for downloading image galleries and collections from a wide range of websites. It supports over 100 sites including Flickr, Tumblr, DeviantArt, Reddit, Twitter/X, Instagram, Pixiv, and many more. For archival workflows, its structured output and metadata extraction make it a natural fit for git-annex-based preservation.
 
-## Overview
+## Key Features
 
 gallery-dl fills the same niche for images that [yt-dlp]({{< ref "yt-dlp" >}}) fills for video: a reliable, configurable downloader that handles authentication, pagination, rate limiting, and metadata extraction across many platforms. Key features for archival use:
 
@@ -52,13 +52,15 @@ gallery-dl supports a wide range of platforms, including (but not limited to):
 
 - **Art communities**: DeviantArt, Pixiv, ArtStation, Newgrounds
 - **Social media**: Twitter/X, Reddit, Tumblr, Instagram, Mastodon
-- **Image hosting**: Flickr, Imgur, SmugMug, Google Photos
+- **Image hosting**: Flickr, Imgur, SmugMug
 - **Imageboards**: Various chan-style boards
 - **Manga/comics**: MangaDex, Webtoon, and others
 
 The full list is maintained in the [project's supported sites documentation](https://github.com/mikf/gallery-dl/blob/master/docs/supportedsites.md).
 
-## Integration with git-annex
+## git-annex / DataLad Integration
+
+**Integration level: git-annex.**
 
 gallery-dl does not have native git-annex integration, but its structured output makes manual integration straightforward.
 
@@ -71,11 +73,11 @@ git annex init "image gallery archive"
 
 # Download a gallery with metadata
 gallery-dl --write-metadata \
-  -D ./galleries/ \
+  -d ./galleries/ \
   'https://www.flickr.com/photos/username/albums/ALBUM_ID'
 
 # Add images to git-annex, metadata to git
-git annex add --include='*.jpg' --include='*.png' --include='*.gif' --include='*.webp'
+git annex add --include='*.jpg' --or --include='*.png' --or --include='*.gif' --or --include='*.webp'
 git add --all  # JSON metadata goes to git
 git commit -m "Archive Flickr album ALBUM_ID"
 ```
@@ -109,7 +111,7 @@ gallery-dl supports an archive file to track already-downloaded items:
 ```bash
 gallery-dl --download-archive gallery-dl-archive.db \
   --write-metadata \
-  -D ./galleries/ \
+  -d ./galleries/ \
   'https://www.reddit.com/r/subreddit/top/?t=month'
 ```
 
@@ -140,7 +142,7 @@ This configuration ensures consistent directory structure, automatic metadata ou
 
 ## AI Readiness
 
-gallery-dl produces **ai-manual** output:
+**Level: ai-manual.**
 
 | Component | AI Ready? | Notes |
 |-----------|-----------|-------|

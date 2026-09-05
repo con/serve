@@ -49,7 +49,7 @@ flowchart LR
         subgraph code["Code Artifacts"]
             issues["Issues/PRs<br>(git-bug)"]
             discussions["Discussions<br>(gh export)"]
-            wikis["Wikis<br>(gh-md)"]
+            wikis["Wikis<br>(git clone)"]
         end
 
         subgraph neuro["NeuroImaging"]
@@ -424,12 +424,12 @@ with the git-annex/DataLad stack.
 Browse all tools by [integration level](/integrations/).
 
 [**native-datalad**](/integrations/native-datalad/) -- The tool is a DataLad extension or produces DataLad datasets directly.
-Examples: annextube, datalad-crawler, wayslack2, citations-collector.
+Examples: annextube, datalad-crawler, datalad-container, con/tinuous.
 These provide the smoothest experience: dataset creation, content tracking,
 and provenance recording happen automatically.
 
 [**git-annex**](/integrations/git-annex/) -- The tool works with git-annex but is not DataLad-specific.
-Examples: yt-dlp with `git annex import`, gallery-dl, rclone as special remote.
+Examples: yt-dlp with `git annex add`, gallery-dl, citations-collector, rclone as special remote.
 Integration requires manual steps but is well-supported.
 
 [**git-only**](/integrations/git-only/) -- The tool stores output in git without annex support.

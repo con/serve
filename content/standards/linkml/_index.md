@@ -1,6 +1,6 @@
 ---
 title: "LinkML"
-description: "Linked data Modeling Language -- the common denominator for custom metadata schemas in the con/serve ecosystem"
+description: "Linked Data Modeling Language -- the common denominator for custom metadata schemas in the con/serve ecosystem"
 ---
 
 [LinkML](https://linkml.io/) is a modeling language for defining data schemas

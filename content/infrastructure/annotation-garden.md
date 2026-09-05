@@ -14,12 +14,10 @@ params:
   issues: "https://github.com/annotation-garden/management/issues"
   docs: "https://docs.annotation.garden"
   language: "Python"
-  license: "MIT"
+  license: "MIT (HEDit); CC-BY-4.0 / CC-BY-NC-SA-4.0 (docs and data)"
   maturity: "alpha"
   last_verified: "2026-02"
 ---
-
-## Overview
 
 The [Annotation Garden Initiative](https://annotation.garden) addresses a fundamental
 problem in neuroscience: labs repeatedly re-annotate identical stimuli in isolation.
@@ -81,7 +79,7 @@ Four agents operate in a feedback loop:
 4. **Assessment Agent** -- final completeness check
 
 The loop runs until annotations pass all checks or reach a retry limit.
-Supports multiple LLM backends via OpenRouter.
+Built on Anthropic's Claude models (bring your own API key).
 
 ### Image Annotation Tool
 
@@ -90,7 +88,7 @@ web-based tool for annotating static images using VLMs
 (OLLAMA local models, GPT-4V, Claude).
 Targets large-scale datasets -- designed to handle 25K+ annotations
 with batch processing and progress tracking.
-Outputs BIDS-compliant JSON with HED tags.
+Outputs BIDS-style `events.tsv` files and JSON sidecars with HED tags.
 
 ## Flagship Datasets
 
