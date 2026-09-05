@@ -423,13 +423,14 @@ Each tool in the catalog is classified by how deeply it integrates
 with the git-annex/DataLad stack.
 Browse all tools by [integration level](/integrations/).
 
-[**native-datalad**](/integrations/native-datalad/) -- The tool is a DataLad extension or produces DataLad datasets directly.
-Examples: annextube, datalad-crawler, datalad-container, con/tinuous.
+[**native-datalad**](/integrations/native-datalad/) -- The tool is a DataLad extension, produces DataLad datasets directly,
+or is designed to be driven by `datalad run` inside a DataLad dataset with git-annex holding its binary outputs.
+Examples: annextube, datalad-crawler, datalad-container, con/tinuous, citations-collector.
 These provide the smoothest experience: dataset creation, content tracking,
-and provenance recording happen automatically.
+and provenance recording happen automatically or by construction.
 
 [**git-annex**](/integrations/git-annex/) -- The tool works with git-annex but is not DataLad-specific.
-Examples: yt-dlp with `git annex add`, gallery-dl, citations-collector, rclone as special remote.
+Examples: yt-dlp with `git annex add`, gallery-dl, rclone as special remote.
 Integration requires manual steps but is well-supported.
 
 [**git-only**](/integrations/git-only/) -- The tool stores output in git without annex support.

@@ -128,6 +128,31 @@ citations-collector discover collection.yaml --full-refresh --output citations.t
 
 The [USAGE guide](https://github.com/con/citations-collector/blob/master/USAGE.md) walks through the bundled ReproNim and DANDI example collections.
 
+## git-annex / DataLad Integration
+
+**Integration level: native-datalad.**
+
+The reference deployment is [dandi-bib](https://github.com/dandi/dandi-bib),
+the DANDI project's bibliography repository, which became a DataLad dataset
+on 2026-01-30 specifically to host this pipeline. Its `citations/` directory
+holds the `collection.yaml`, a Makefile whose header reads "Designed to be run
+with datalad run for reproducibility", and the outputs:
+
+```bash
+# citations/Makefile targets wrap the CLI:
+#   discover -> merge (detect-merges) -> pdfs (fetch-pdfs)
+#   -> extract-contexts (--git-annex) -> classify -> zotero
+cd citations
+datalad run -m "Refresh citations" make
+git annex sync --content
+```
+
+A daily GitHub Actions workflow runs exactly that `datalad run` after
+refreshing `dandi.bib` from the DANDI API, then pushes. The dataset's
+`.gitattributes` keeps the TSV and BibTeX in git and sends binary content
+(PDFs, `extracted_citations.json`) to git-annex, so the commit history is a
+sequence of `[DATALAD RUNCMD]` records, each replayable with `datalad rerun`.
+
 ## AI Readiness
 
 **Level: ai-ready.**
