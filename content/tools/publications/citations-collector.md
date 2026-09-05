@@ -41,6 +41,7 @@ my-citations/                          # git repository (DataLad optional)
   extracted_citations.json             # Citation contexts extracted from PDFs
   pdfs/
     <doi>/article.pdf                  # git-annex when fetched with --git-annex
+    <doi>/article.bib                  # BibTeX record for the PDF
 ```
 
 ### Data Model
@@ -93,23 +94,30 @@ Everything citations-collector writes is a plain file: `citations.tsv` is diffab
 
 ```bash
 # Describe the seed publications in collection.yaml, then discover citing works
-citations-collector discover collection.yaml --output citations.tsv
+# (--email joins CrossRef's polite pool; --sources selects the databases)
+citations-collector discover collection.yaml --email you@example.org --output citations.tsv
 
-# Import seeds from a Zotero library or a DANDI dataset instead
-citations-collector import-zotero ...
-citations-collector import-dandi ...
+# Seeds given as GitHub repositories or Zenodo concept records are expanded to DOIs
+citations-collector discover collection.yaml --expand-refs --output citations.tsv
 
-# Fetch open-access PDFs, tracking them in git-annex
+# Import an existing Zotero library or a DANDI dataset's references as seeds
+citations-collector import-zotero --help
+citations-collector import-dandi --help
+
+# Fetch open-access PDFs (with a BibTeX file next to each), tracking them in git-annex
 citations-collector fetch-pdfs --config collection.yaml --git-annex
 
+# Flag records that refer to the same work
+citations-collector detect-merges --config collection.yaml --fuzzy-match
+
 # Push the collection to Zotero
-citations-collector sync-zotero ...
+citations-collector sync-zotero --config collection.yaml
 
 # Re-run discovery: incremental by default, --full-refresh to start over
-citations-collector discover collection.yaml --output citations.tsv
+citations-collector discover collection.yaml --full-refresh --output citations.tsv
 ```
 
-See the upstream README for the current option set; the CLI is still evolving.
+The [USAGE guide](https://github.com/con/citations-collector/blob/master/USAGE.md) walks through the bundled ReproNim and DANDI example collections.
 
 ## AI Readiness
 
