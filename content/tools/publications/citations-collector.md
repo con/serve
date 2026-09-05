@@ -1,13 +1,13 @@
 ---
 title: "citations-collector"
 date: 2026-02-12
-description: "Multi-source scholarly citation discovery, open-access PDF acquisition, and Zotero sync, with a LinkML schema and optional git-annex tracking"
-summary: "Discovers citations across CrossRef, OpenCitations, DataCite, and OpenAlex; syncs with Zotero; fetches open-access PDFs via Unpaywall with optional git-annex tracking; and records everything in TSV files following a LinkML schema aligned with CiTO and FaBiO."
+description: "Multi-source scholarly citation discovery, open-access PDF acquisition, and Zotero sync, designed to run under datalad run with PDFs in git-annex"
+summary: "Discovers citations across CrossRef, OpenCitations, DataCite, and OpenAlex; syncs with Zotero; fetches open-access PDFs via Unpaywall into git-annex; and records everything in TSV files following a LinkML schema aligned with CiTO and FaBiO. Built to be driven by datalad run inside a DataLad dataset, as dandi-bib does daily."
 categories: ["Publications"]
 tags: ["CON", "citations", "scholarly", "crossref", "opencitations", "datacite", "openalex", "zotero", "pdf", "provenance"]
 media_types: ["publications"]
 standards: ["LinkML", "TSV", "YAML"]
-integrations: ["git-annex"]
+integrations: ["native-datalad"]
 ai_readiness: ["ai-ready"]
 params:
   repo: "https://github.com/con/citations-collector"
@@ -16,7 +16,10 @@ params:
   language: "Python"
   license: "MIT"
   maturity: "alpha"
-  last_verified: "2026-02"
+  last_verified: "2026-09"
+  examples:
+    - title: "dandi-bib citations pipeline"
+      url: "https://github.com/dandi/dandi-bib/tree/master/citations"
 ---
 
 **citations-collector** is a tool for building and maintaining comprehensive, version-controlled collections of scholarly citations. Given a set of seed publications (your lab's papers, a project's key references), it discovers citing works across multiple sources, fetches open-access PDFs where available, syncs with Zotero for reference management, and records everything in plain TSV files that can be tracked in git, with PDFs optionally in git-annex.
@@ -35,13 +38,14 @@ citations-collector addresses the first three in a single, file-based workflow, 
 ## Architecture
 
 ```
-my-citations/                          # git repository (DataLad optional)
+my-citations//                         # DataLad dataset
   collection.yaml                      # Seed publications and settings (input)
-  citations.tsv                        # Discovered citations with per-source provenance
-  extracted_citations.json             # Citation contexts extracted from PDFs
+  citations.tsv                        # Discovered citations with per-source provenance (git)
   pdfs/
-    <doi>/article.pdf                  # git-annex when fetched with --git-annex
-    <doi>/article.bib                  # BibTeX record for the PDF
+    <doi>/article.pdf                  # git-annex
+    <doi>/article.bib                  # BibTeX record for the PDF (git)
+    <doi>/extracted_citations.json     # citation contexts from the PDF (git-annex)
+    <doi>/classifications.json         # CiTO classification of each context
 ```
 
 ### Data Model
@@ -86,9 +90,14 @@ For each discovered citation, `fetch-pdfs` looks up an open-access copy through 
 
 Two further subcommands go beyond the citation list: `extract-contexts` pulls the sentences around each citation out of the fetched PDFs, and `classify` uses an LLM to label the relationship with CiTO types (cites as data source, cites as authority, and so on). `detect-merges` flags records that refer to the same work.
 
-### git and git-annex Integration
+### Designed for `datalad run`
 
-Everything citations-collector writes is a plain file: `citations.tsv` is diffable in git, and PDFs go into git-annex when requested. The tool itself does not call DataLad; `datalad run` around `discover` or `fetch-pdfs` is how provenance records are obtained.
+citations-collector does not call DataLad itself; it is built to be *driven by*
+`datalad run` inside a DataLad dataset. Every output is a plain file --
+`citations.tsv` diffs cleanly in git, PDFs and extracted contexts go to
+git-annex -- and each pipeline step is idempotent and incremental, so
+re-running a `datalad run` record does the right thing. See the integration
+section below for the workflow this was developed against.
 
 ## Usage
 
