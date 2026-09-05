@@ -1,7 +1,7 @@
 ---
-title: "Git Refs as Side-Channel Databases"
+title: "Git Content Store as Side-Channel Databases"
 date: 2026-09-04
-description: "Using git's object store and ref namespaces to version, distribute, and merge information that is complementary to -- but not part of -- the file trees on the branches of direct interest"
+description: "Using git's content store -- objects plus refs -- to version, distribute, and merge information that is complementary to, and changes independently of, the file trees on the branches of direct interest"
 standards: ["TSV", "JSON", "JSON-LD"]
 ---
 
@@ -14,11 +14,19 @@ calls the Model a set of structured files in standard formats.
 [Vault Organization]({{< ref "vault-organization" >}}) shows the layouts
 (BIDS, hive partitioning) that make such a tree queryable without a server.
 [Metadata Extraction]({{< ref "metadata-extraction" >}}) shows how summaries
-aggregate upward through the hierarchy.
+aggregate upward through the hierarchy,
+providing multi-tiered access to the (meta)data
+at whatever granularity suits each tier.
 Put together: a collection of `.tsv`, `.json`, and `.parquet` files
 with an entity-labeled layout, under git, *is* the database.
 DuckDB, VisiData, or a Svelte page are its query engines.
-No MySQL, and often not even SQLite, is required.
+No MySQL, and often not even SQLite, is required,
+although SQL and other database-style queries remain available
+through DuckDB over the files directly,
+or through domain adapters such as
+[pybids](https://github.com/bids-standard/pybids) and
+[bids2table](https://github.com/childmindresearch/bids2table)
+in the case of BIDS.
 
 **Not everything belongs in that tree.**
 A branch records the state of a file tree.
@@ -29,17 +37,32 @@ which AI session produced a commit,
 extracted metadata that is expensive to recompute,
 issues mirrored from a forge,
 line-level authorship.
-Committing such information into the main tree would
-churn the history, confuse consumers of the tree,
-and force every clone to carry it.
+What these share is that they are **transient relative to the tree**:
+content moves between remotes, issues get comments, metadata is re-extracted,
+and none of that changes a single byte of the tree they describe.
+Recording such changes as commits on the main branch
+would entangle two histories that evolve at different rates
+and for different reasons.
+Keeping them apart also leaves the choice open
+of whether, when, and where to share the complementary part:
+push it everywhere, to selected remotes only, or not at all.
 
-Git offers a way out that several projects have independently adopted:
-the object store holds any tree or blob,
-and any ref makes those objects durable, versionable, pushable, and fetchable.
-A ref outside `refs/heads/` is a **side channel** --
-a parallel, complementary database that lives in the same repository,
-travels through the same remotes,
-and never touches the working tree.
+Git's own manual page calls it a "stupid content tracker",
+and that is the relevant property here:
+the **content store** -- an object database of blobs, trees, and commits,
+plus the refs that make objects reachable --
+will hold any content and version, push, fetch, and merge it,
+regardless of whether it corresponds to a working tree.
+Several projects have independently adopted this as a **side channel**:
+a parallel, complementary database that lives in the same repository
+and travels through the same remotes.
+The side channel does not have to live outside `refs/heads/`.
+git-annex and Entire use ordinary branches,
+which every clone fetches by default;
+git-bug, metalad, and notes use other namespaces,
+which a clone fetches only when told to.
+Both are valid setups with different sharing defaults,
+and the sections below treat them together.
 
 ## The Mechanisms Git Provides
 
@@ -73,9 +96,11 @@ a hashed two-level layout (`aaa/bbb/<key>.log`),
 ([internals](https://git-annex.branchable.com/internals/)).
 
 Every line carries a timestamp
-and the files are designed to be merged by concatenation:
-when two clones disagree, union-merge the files,
-and the newest timestamp per key and repository wins.
+and the branch is designed to be merged automatically:
+the per-key log files from two clones are combined by tree union,
+since most keys are touched by only one side,
+and where the same file was changed on both sides
+its lines are unioned and the newest timestamp per key and repository wins.
 This gives "most recent availability information"
 without any coordination between clones.
 
@@ -294,8 +319,11 @@ in the [self-contain-github-repo](/projects/self-contain-github-repo/) project.
   across clones, is unexplored.
 - **Discoverability** --
   a side channel is only useful to those who know it exists.
-  Should a dataset advertise its side channels
-  in `.datalad/config` or `dataset_description.json`?
+  Today each channel is tool-specific,
+  so learning that a repository has one means probing for that tool's refs
+  (`git ls-remote` for `refs/bugs/*`, a `git-annex` branch, and so on).
+  Whether a repository should advertise its side channels in one place,
+  and in what form, is unexplored.
 
 ## See Also
 

@@ -48,9 +48,9 @@ Covers per-record granularity (update one row when one subject changes),
 cascading dependencies, datalad-metalad as extraction engine,
 and the connection to derivative reprocessing.
 
-**[Git Refs as Side-Channel Databases](git-refs-side-channels/)** --
-Using git's object store and ref namespaces to hold information
-complementary to the file trees of interest:
+**[Git Content Store as Side-Channel Databases](git-content-store-side-channels/)** --
+Using git's content store -- objects plus refs -- to hold information
+that is complementary to, and changes independently of, the file trees of interest:
 the `git-annex` branch, git-bug's `refs/bugs/`, Entire's checkpoint branch,
 git notes, metalad's `refs/datalad/*`.
 Compares their merge strategies, pruning, and distribution costs.

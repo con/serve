@@ -193,10 +193,10 @@ and replace it freely when something better comes along.
   hive partitioning, BIDS layouts, and the directory conventions
   that make hierarchical summarization possible.
 
-- **[Git Refs as Side-Channel Databases]({{< ref "git-refs-side-channels" >}})** --
+- **[Git Content Store as Side-Channel Databases]({{< ref "git-content-store-side-channels" >}})** --
   the file tree is the Model; information *about* the tree
   (content availability, per-commit provenance, mirrored issues)
-  can live in git refs outside it.
+  can live in git's content store outside it.
 
 - **[Ingestion Patterns]({{< ref "ingestion-patterns" >}})** --
   the collection stage that produces the raw data

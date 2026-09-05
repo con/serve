@@ -167,4 +167,4 @@ would be disproportionate.
 - [Git AI](../git-ai/) -- Line-level AI authorship attribution
 - [cctrace](../cctrace/) -- Lightweight Claude Code transcript capture
 - [ccexport](../ccexport/) -- Claude Code transcript export to readable formats
-- [Git Refs as Side-Channel Databases]({{< ref "concepts/git-refs-side-channels" >}}) -- git notes compared with the other ref-based side channels
+- [Git Content Store as Side-Channel Databases]({{< ref "concepts/git-content-store-side-channels" >}}) -- git notes compared with the other ref-based side channels

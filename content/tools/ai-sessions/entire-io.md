@@ -221,5 +221,5 @@ To incorporate Entire.io into a DataLad workflow:
 - [SpecStory](../specstory/) -- VS Code/Cursor extension with a different archival approach
 - [How Entire works under the hood](https://julien.danjou.info/blog/how-entire-works-under-the-hood/) --
   the `entire/checkpoints/v1` branch layout, commit trailers, and tree-union merging
-- [Git Refs as Side-Channel Databases]({{< ref "concepts/git-refs-side-channels" >}}) --
+- [Git Content Store as Side-Channel Databases]({{< ref "concepts/git-content-store-side-channels" >}}) --
   the general pattern, compared across git-annex, git-bug, notes, and metalad

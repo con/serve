@@ -111,7 +111,7 @@ analyses immediately.
 
 ## See Also
 
-- [Git Refs as Side-Channel Databases]({{< ref "concepts/git-refs-side-channels" >}}) --
+- [Git Content Store as Side-Channel Databases]({{< ref "concepts/git-content-store-side-channels" >}}) --
   git-bug's `refs/bugs/` compared with the `git-annex` branch, git notes,
   and Entire's checkpoint branch
 - [dandi-bib sync workflow](https://github.com/dandi/dandi-bib/blob/master/.github/workflows/sync-git-bug.yml) --
