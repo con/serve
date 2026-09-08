@@ -77,7 +77,7 @@ See [Contributing](content/about/contributing.md) for the full guide. In brief:
 ## TODOs
 
 - [ ] Develop Claude Code SKILL (`/conserve.add-tool`) for adding new tool entries with proper taxonomies
-- [ ] Set up GitHub Pages deployment via GitHub Actions
+- [x] Set up GitHub Pages deployment via GitHub Actions
 - [ ] Create a sample (fully or partially private) deployment at e.g. conserve.centerforopenneuroscience.org
 - [ ] Integrate Entire.io for ongoing AI session archival during development
 - [ ] Add comparison matrix page (tool x feature grid)
@@ -93,7 +93,7 @@ See [Contributing](content/about/contributing.md) for the full guide. In brief:
 - **Static site generator**: [Hugo](https://gohugo.io/)
 - **Theme**: [Congo](https://jpanther.github.io/congo/) (Tailwind CSS)
 - **Version control**: [DataLad](https://www.datalad.org/) / [git-annex](https://git-annex.branchable.com/)
-- **Hosting**: GitHub Pages (planned)
+- **Hosting**: GitHub Pages, deployed by GitHub Actions on every push to `master`
 
 ## License
 

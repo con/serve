@@ -19,7 +19,7 @@ The primary mechanism for outbound distribution is the [git-annex special remote
 | **S3** | Amazon S3 and S3-compatible services (Wasabi, MinIO, Backblaze B2) |
 | **rsync** | Any server with SSH and rsync -- the simplest backup target |
 | **web** | Register URLs as content sources (not a backup target, but a distribution mechanism) |
-| **bittorrent** | Distribute large datasets via BitTorrent |
+| **bittorrent** | Fetch content from torrents or magnet links (download-only) |
 | **directory** | Local or mounted filesystem path (USB drives, NAS, NFS mounts) |
 | **glacier** | Amazon Glacier for cold archival storage |
 
@@ -85,7 +85,8 @@ DataLad includes commands for creating siblings on various platforms:
 |---------|--------|
 | `create-sibling-github` | GitHub repositories |
 | `create-sibling-gitlab` | GitLab repositories |
-| `create-sibling-gogs` | Gitea/Forgejo/Gogs instances (including [Forgejo-Aneksajo]({{< ref "forgejo-aneksajo" >}})) |
+| `create-sibling-gitea` | Gitea and Gitea-API-compatible forges such as Forgejo (including [Forgejo-Aneksajo]({{< ref "forgejo-aneksajo" >}}) and [DataLad Hub]({{< ref "datalad-hub" >}})) |
+| `create-sibling-gogs` / `create-sibling-gin` | Gogs instances / [GIN]({{< ref "gin" >}}) |
 | `create-sibling-osf` | Open Science Framework (via [datalad-osf](https://github.com/datalad/datalad-osf)) |
 | `create-sibling-ria` | RIA (Remote Indexed Archive) stores |
 

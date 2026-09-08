@@ -181,7 +181,7 @@ producing structured metadata records
 stored in git, aggregated up superdataset hierarchies,
 and queried via `meta-dump`.
 The [DataLad Registry](https://registry.datalad.org/)
-(23,443 datasets, ~2 PB of annexed content)
+(over 23,000 datasets and roughly 2 PB of annexed content as of early 2026)
 is built on metalad extractors running at scale.
 
 ### Metalad's Extraction Pipeline
@@ -399,7 +399,8 @@ and *at what granularity*.
 - **metalad revival scope** --
   how much of metalad's current codebase is reusable as-is
   vs. needing modernization?
-  Last released January 2024 with 141 open issues --
+  As of early 2026 the last release dated from January 2024,
+  with well over a hundred open issues --
   is the extraction pipeline stable enough to build on,
   or does the core need work first?
 - **Tabular vs. JSON-LD** --

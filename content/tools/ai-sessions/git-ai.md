@@ -13,7 +13,7 @@ params:
   homepage: "https://usegitai.com"
   issues: "https://github.com/git-ai-project/git-ai/issues"
   language: "Rust"
-  license: "MIT"
+  license: "Apache-2.0"
   maturity: "beta"
   last_verified: "2026-03"
 ---
@@ -24,8 +24,8 @@ it tracks **line-level authorship** --
 recording exactly which lines of code were written by an AI assistant
 versus a human developer.
 
-Where [git-memento](../git-memento/) preserves *conversations*
-and [Entire.io](../entire-io/) preserves *sessions*,
+Where [git-memento]({{< ref "git-memento" >}}) preserves *conversations*
+and [Entire.io]({{< ref "entire-io" >}}) preserves *sessions*,
 Git AI preserves *attribution* at the finest granularity git supports.
 
 ## How It Works
@@ -65,7 +65,7 @@ where developers use different tools.
 ### AI-Aware Blame
 
 ```bash
-git-ai blame path/to/file.py
+git ai blame path/to/file.py
 ```
 
 A drop-in replacement for `git blame`
@@ -105,7 +105,9 @@ A team could use both:
 Git AI for line-level attribution and compliance reporting,
 and git-memento or Entire.io for preserving the reasoning context.
 
-## Integration with con/serve
+## git-annex / DataLad Integration
+
+**Integration level: git-only.**
 
 For research software projects tracked with DataLad,
 Git AI's authorship logs provide a provenance layer
@@ -143,9 +145,15 @@ for interoperability.
   Long sessions with many edits may produce significant checkpoint data.
 - **Enterprise features** require a commercial license.
 
+## AI Readiness
+
+**Level: ai-ready.**
+
+Authorship logs are structured records attached as git notes, and `git ai blame` renders them as plain text. Both are directly consumable by an LLM or a script; no binary content is involved.
+
 ## See Also
 
-- [git-memento](../git-memento/) -- Conversation-level archival via git notes
-- [Entire.io](../entire-io/) -- Full session archival with shadow branches
+- [git-memento]({{< ref "git-memento" >}}) -- Conversation-level archival via git notes
+- [Entire.io]({{< ref "entire-io" >}}) -- Full session archival as checkpoint refs
 - [Agent Trace spec](https://github.com/cursor/agent-trace) -- Open attribution standard
 - [Git Content Store as Side-Channel Databases]({{< ref "concepts/git-content-store-side-channels" >}}) -- `refs/notes/ai` in the context of the general pattern

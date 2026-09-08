@@ -1,7 +1,7 @@
 ---
 title: "User Stories"
 date: 2026-02-16
-description: "Concrete archival scenarios that drive con/serve development — from personal digital vaults to lab-wide research infrastructure"
+description: "Concrete archival scenarios that drive con/serve development -- from personal digital vaults to lab-wide research infrastructure"
 cascade:
   showEdit: true
 ---

@@ -40,7 +40,7 @@ from the [user stories](/user-stories/) data sources:
 | `conserve/git-bug` | [git-bug]({{< ref "git-bug" >}}) | [Software Project]({{< ref "software-project" >}}), [Neuroimaging Lab]({{< ref "neuroimaging-lab" >}}) |
 | `conserve/tinuous` | [con/tinuous]({{< ref "tinuous" >}}) | [Software Project]({{< ref "software-project" >}}), [Neuroimaging Lab]({{< ref "neuroimaging-lab" >}}) |
 | `conserve/github-backup` | [python-github-backup]({{< ref "github-backup" >}}) | [Software Project]({{< ref "software-project" >}}) |
-| `conserve/gh-export` | [gh-discussions-export]({{< ref "gh-discussions-export" >}}), [gh-md]({{< ref "gh-md" >}}) | [Software Project]({{< ref "software-project" >}}) |
+| `conserve/gh-md` | [gh-md]({{< ref "gh-md" >}}), [gh-discussions-export]({{< ref "gh-discussions-export" >}}) | [Software Project]({{< ref "software-project" >}}) |
 
 ### Design Considerations
 
@@ -122,7 +122,7 @@ after testing in Vagrant VMs.
 
 ## Track 3: Ingestion Skills for Agent-Assisted Operations
 
-**Goal:** Create the first Claude Code skills (`.claude/commands/`)
+**Goal:** Create the first Claude Code skills (`.claude/skills/`)
 that encode repeatable ingestion workflows,
 bridging the gap between ad-hoc agent use
 and the [solidified pipelines]({{< ref "concepts/agents#the-solidification-lifecycle" >}})
@@ -190,12 +190,12 @@ a `vault-ingest` config file that a CLI tool consumes.
 The [Software Project]({{< ref "software-project" >}}) user story
 archives multiple artifact types per GitHub repository
 (code, issues, CI logs, discussions).
-The [vault layout]({{< ref "vault-organization#self-contained-per-entity-grouping" >}})
+The [vault layout]({{< ref "vault-organization#emerging-principles" >}})
 groups these under a per-repo superdataset,
 but the vault's deep hierarchy doesn't map directly
 to a forge's flat `{org}/{repo}` namespace.
 
-The [self-contain-github-repo](/projects/self-contain-github-repo/) project
+The [self-contain-github-repo](https://github.com/con/serve/tree/master/projects/self-contain-github-repo) project
 explores this duality:
 how to organize repo artifacts on the vault side (subdataset structure)
 and represent them on the forge side (naming conventions, git namespaces, ref prefixes).

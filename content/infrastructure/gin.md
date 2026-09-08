@@ -2,7 +2,7 @@
 title: "GIN (G-Node Infrastructure)"
 date: 2026-02-12
 description: "Gogs-based research data management platform with git-annex support, popular among European neuroscience researchers"
-summary: "A fork of Gogs with git-annex support for versioning large research data files, operated by G-Node (German Neuroinformatics Node) at LMU Munich. Funded by the same NSF+BMBF CRCNS program as DataLad."
+summary: "A fork of Gogs with git-annex support for versioning large research data files, operated by G-Node (German Neuroinformatics Node) at LMU Munich with BMBF funding."
 categories: ["Infrastructure"]
 tags: ["CON-contrib", "git-annex", "gogs", "self-hosted", "forge", "neuroscience", "research-data"]
 integrations: ["git-annex"]
@@ -20,8 +20,6 @@ params:
       url: "https://gin.g-node.org"
 ---
 
-## Overview
-
 [GIN](https://gin.g-node.org) (G-Node Infrastructure) is a research data management platform built on a [fork of Gogs](https://github.com/G-Node/gogs) with added git-annex support. It is operated by the [German Neuroinformatics Node](https://g-node.github.io/) (G-Node) at Ludwig Maximilian University Munich and provides free data hosting for neuroscience researchers.
 
 GIN and Forgejo-Aneksajo address the same fundamental problem -- standard git forges cannot handle git-annex content -- but arrived at it from different directions and lineages:
@@ -32,7 +30,7 @@ GIN and Forgejo-Aneksajo address the same fundamental problem -- standard git fo
 - **GIN** forked Gogs directly, adding git-annex support
 - **Forgejo-Aneksajo** added git-annex support to Forgejo
 
-GIN was funded by the same **NSF+BMBF CRCNS** (Collaborative Research in Computational Neuroscience) program that funded DataLad, reflecting the shared recognition that neuroscience needs proper infrastructure for large research data.
+GIN is supported by the German Federal Ministry of Education and Research (BMBF, grant 01GQ1302) and the Bernstein Center Munich, reflecting the same recognition that drove DataLad's funding: neuroscience needs proper infrastructure for large research data.
 
 ## Key Features
 
@@ -51,7 +49,7 @@ GIN was funded by the same **NSF+BMBF CRCNS** (Collaborative Research in Computa
 | Active upstream | Gogs is less actively developed | Forgejo is very actively developed |
 | Known instances | gin.g-node.org (single public instance) | hub.datalad.org, hub.psychoinformatics.de, hub.edu.datalad.org |
 | Self-hosting | Possible but uncommon | Designed for self-hosting |
-| DataLad integration | Partial (git-annex works, `datalad push` works) | Native (`datalad create-sibling-gogs`) |
+| DataLad integration | Native (`datalad create-sibling-gin`) | Native (`datalad create-sibling-gitea`) |
 | Community | Popular among EU neuroscience academics | Growing DataLad/research data community |
 | Funding | BMBF (German federal) | Community-driven |
 
@@ -62,10 +60,8 @@ GIN was funded by the same **NSF+BMBF CRCNS** (Collaborative Research in Computa
 GIN supports the git-annex protocol, so `git annex copy --to` and `git annex get --from` work against GIN repositories. DataLad datasets can use GIN as a sibling:
 
 ```bash
-# GIN works as a standard git remote with annex support
-datalad create-sibling-gogs --name gin \
-    --api https://gin.g-node.org/api/v1 \
-    --credential gin-token
+# DataLad has a dedicated command for GIN (defaults to gin.g-node.org)
+datalad create-sibling-gin my-dataset --name gin
 
 datalad push --to gin
 ```

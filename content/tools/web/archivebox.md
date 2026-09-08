@@ -22,12 +22,10 @@ params:
       url: "https://demo.archivebox.io/public/"
 ---
 
-## Overview
-
 ArchiveBox is a self-hosted web archiving tool that takes a list of URLs and
 saves snapshots of each page in multiple formats simultaneously.  For every URL,
 it can produce an HTML copy, a PDF rendering, a full-page screenshot, a WARC
-archive, extracted media files, and a git-tracked history of changes.
+archive, extracted media files, and clones of any source repositories the page links to.
 
 Unlike browser extensions that save a single page at a time, ArchiveBox is
 designed for bulk archiving -- it can ingest URLs from bookmarks exports,
@@ -43,7 +41,7 @@ as a local server with a web UI, CLI, and REST API.
   - Full-page screenshot (PNG)
   - WARC archive (for replay with tools like ReplayWeb.page)
   - Extracted audio/video/images
-  - Git history of page changes over time
+  - Git clones of linked source-code repositories
   - Plain text extraction
   - DOM dump
 - **Bulk import** -- accepts URLs from browser bookmarks (Chrome, Firefox),
@@ -52,13 +50,13 @@ as a local server with a web UI, CLI, and REST API.
 - **Web UI and API** -- Django-based web interface for browsing archives,
   searching content, and managing snapshots.  REST API for programmatic access.
 - **Scheduling** -- built-in scheduler for periodic re-archiving of URLs.
-- **Full-text search** -- search across archived page content using Sonic
-  or Ripgrep backends.
+- **Full-text search** -- search across archived page content using SQLite FTS,
+  Sonic, or ripgrep backends.
 - **Self-hosted** -- runs on your own hardware; no third-party dependencies
   for archiving.  Docker or bare-metal installation.
-- **Deduplication** -- detects and avoids re-archiving identical content.
+- **URL deduplication** -- skips URLs that have already been archived (`ONLY_NEW`).
 
-## Basic Usage
+## Usage
 
 ```bash
 # Install via pip or Docker
@@ -81,9 +79,9 @@ archivebox add < urls.txt
 archivebox server 0.0.0.0:8000
 ```
 
-## Output Structure
+## Output Format
 
-ArchiveBox organizes its output by URL hash:
+ArchiveBox organizes its output by snapshot timestamp:
 
 ```
 archive/
@@ -94,7 +92,7 @@ archive/
     screenshot.png         # full-page screenshot
     warc/                  # WARC archive
     media/                 # extracted media files
-    git/                   # git-tracked page history
+    git/                   # clones of linked repositories
     readability/           # extracted article text
 ```
 

@@ -22,8 +22,6 @@ params:
       url: "https://datasets.datalad.org/"
 ---
 
-## Overview
-
 datalad-crawler is a DataLad extension that provides pipeline-based web crawling
 capabilities for systematically tracking and archiving web resources.  It was
 originally developed to automate the creation and maintenance of DataLad datasets
@@ -47,8 +45,9 @@ web resources.
   or changed content on subsequent runs.
 - **URL tracking** -- registers download URLs with git-annex so content can be
   re-obtained from the original source (`git annex get`).
-- **Built-in nodes** -- includes nodes for common tasks: HTTP fetching, HTML
-  parsing, S3 bucket listing, tarball extraction, and more.
+- **Built-in nodes and templates** -- nodes for HTTP fetching, HTML link
+  matching, S3 bucket listing, and annexing, plus pipeline templates such as
+  `simple_with_archives`, `simple_s3`, `gh`, `openfmri`, and `xnat`.
 - **Customizable** -- write custom pipeline nodes in Python for domain-specific
   crawling logic.
 
@@ -57,18 +56,21 @@ web resources.
 A simple pipeline that crawls a web page for links to data files:
 
 ```python
-from datalad_crawler.pipelines import pipeline
+# A pipeline module defines a pipeline() function returning a list of nodes
+from datalad_crawler.nodes.crawl_url import crawl_url
+from datalad_crawler.nodes.matches import a_href_match
+from datalad_crawler.nodes.annex import Annexificator
 
-def my_pipeline():
+def pipeline(url="https://example.com/data/"):
+    annex = Annexificator()
     return [
-        crawl_url("https://example.com/data/"),
+        crawl_url(url),
         a_href_match(r".*\.csv$"),     # extract CSV links
-        download,                       # fetch each file
-        annex,                          # add to git-annex
+        annex,                          # download and add to git-annex
     ]
 ```
 
-## Basic Usage
+## Usage
 
 ```bash
 # Install the extension
@@ -77,7 +79,7 @@ pip install datalad-crawler
 # Create a new dataset and configure a crawler
 datalad create my-archive
 cd my-archive
-datalad crawl-init --template simple \
+datalad crawl-init --template simple_with_archives \
     --save url="https://example.com/data/"
 
 # Run the crawler

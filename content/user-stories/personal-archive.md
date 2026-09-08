@@ -59,12 +59,11 @@ Sources include:
 **Desired end state:**
 
 ```
-~/vault/personal/photos/
+~/vault/personal//photos//
     ├── import-google-2026-02/    # Takeout dump, metadata reassembled
     ├── import-camera-2025/       # Direct camera imports
     ├── albums/                   # Curated albums (links or metadata)
-    ├── photos.tsv                # Hierarchical summary index
-    └── .datalad/
+    └── photos.tsv                # Hierarchical summary index
 ```
 
 With browsable frontends:
@@ -81,20 +80,19 @@ With browsable frontends:
 | **WhatsApp** | Export from app settings | Text + media | Manual process, no good automated tool |
 | **Signal** | Signal backup decoder | SQLite | Encrypted backup requires passphrase |
 | **Slack** (personal workspaces) | [slackdump]({{< ref "slackdump" >}}) | JSON | For personal or small-team workspaces |
-| **Matrix** (personal rooms) | [matrix-archive]({{< ref "matrix-archive" >}}) | HTML/JSON | Self-hosted servers simplify this |
+| **Matrix** (personal rooms) | [matrix-archive]({{< ref "matrix-archive" >}}) | JSON + media | Self-hosted servers simplify this |
 | **Discord** | DiscordChatExporter | HTML/JSON | Personal servers and DMs |
 
 **Desired end state:**
 
 ```
-~/vault/personal/messaging/
+~/vault/personal//messaging//
     ├── telegram/
     │   ├── channels/        # Personal channels (microblog-style)
     │   ├── groups/          # Group chats
     │   └── dms/             # Direct messages
     ├── whatsapp/
-    ├── signal/
-    └── .datalad/
+    └── signal/
 ```
 
 ### YouTube (Personal Collection)
@@ -114,7 +112,7 @@ Actual video archival for liked/playlist videos uses
 **Desired end state:**
 
 ```
-~/vault/personal/youtube/
+~/vault/personal//youtube//
     ├── watch-history/
     │   └── history.json         # From Takeout
     ├── liked-videos/
@@ -126,9 +124,8 @@ Actual video archival for liked/playlist videos uses
     │       └── {video_id}/
     │           ├── metadata.json
     │           └── video.mkv    # git-annex
-    ├── subscriptions/
-    │   └── subscriptions.json   # From Takeout
-    └── .datalad/
+    └── subscriptions/
+        └── subscriptions.json   # From Takeout
 ```
 
 ### Other Personal Data
@@ -147,25 +144,25 @@ Actual video archival for liked/playlist videos uses
 
 > **TODO:** AI-generated layout, to be curated.
 
-The personal archive as a DataLad superdataset:
+The personal archive as a DataLad superdataset
+(`//` marks [subdataset boundaries]({{< ref "vault-organization#dataset-nesting-notation" >}})):
 
 ```
-~/vault/personal/                      # DataLad superdataset
-    ├── google-takeout-raw/            # Raw Takeout dump (archival reference)
-    ├── photos/                        # Canonical photo collection
-    ├── email/                         # Gmail MBOX → processed email
-    ├── messaging/                     # All messaging platforms
-    ├── youtube/                       # Video collection + metadata
-    ├── drive/                         # Google Drive documents
-    ├── calendar/                      # Calendar events
-    ├── contacts/                      # Address book
-    ├── location-history/              # GPS tracks
-    ├── web-archives/                  # Saved web pages
-    ├── music/                         # Music library
-    └── .datalad/
+~/vault/personal//                     # DataLad superdataset
+    ├── google-takeout-raw//           # Raw Takeout dump (archival reference)
+    ├── photos//                       # Canonical photo collection
+    ├── email//                        # Gmail MBOX -> processed email
+    ├── messaging//                    # All messaging platforms
+    ├── youtube//                      # Video collection + metadata
+    ├── drive//                        # Google Drive documents
+    ├── calendar//                     # Calendar events
+    ├── contacts//                     # Address book
+    ├── location-history//             # GPS tracks
+    ├── web-archives//                 # Saved web pages
+    └── music//                        # Music library
 ```
 
-Each subdirectory is a nested DataLad dataset,
+Each top-level entry is a nested DataLad subdataset,
 following [YODA principles]({{< ref "about#yoda-and-how-conserve-extends-it" >}}).
 This allows independent version tracking, selective replication,
 and fine-grained access control via git-annex `wanted` expressions.
@@ -217,12 +214,12 @@ flowchart TD
 
 | Component | Tool | Status |
 |-----------|------|--------|
-| Google Takeout download | [Google Takeout]({{< ref "tools/cloud-storage/google-takeout" >}}) | Manual, no full automation yet |
-| Photo browsing | [PhotoPrism]({{< ref "photoprism" >}}), [Photoview]({{< ref "photoview" >}}), [copyparty]({{< ref "copyparty" >}}) | Deployable |
-| Telegram archival | [tg-archive]({{< ref "tg-archive" >}}) | Working |
-| YouTube video archival | [annextube]({{< ref "annextube" >}}), [yt-dlp]({{< ref "tools/media/yt-dlp" >}}) | Working |
-| Cloud sync | [rclone]({{< ref "rclone" >}}) | Working |
-| Image gallery archival | [gallery-dl]({{< ref "gallery-dl" >}}) | Working |
+| Google Takeout download | [Google Takeout]({{< ref "tools/cloud-storage/google-takeout" >}}) | Manual export; no automated ingestion yet |
+| Photo browsing | [PhotoPrism]({{< ref "photoprism" >}}), [Photoview]({{< ref "photoview" >}}), [copyparty]({{< ref "copyparty" >}}) | Stable |
+| Telegram archival | [tg-archive]({{< ref "tg-archive" >}}) | Stable |
+| YouTube video archival | [annextube]({{< ref "annextube" >}}), [yt-dlp]({{< ref "tools/media/yt-dlp" >}}) | Beta / Stable |
+| Cloud sync | [rclone]({{< ref "rclone" >}}) | Stable |
+| Image gallery archival | [gallery-dl]({{< ref "gallery-dl" >}}) | Stable |
 | Infrastructure deployment | [Lab-in-a-Box]({{< ref "lab-in-a-box" >}}) | Alpha |
 
 ## Distribution and Privacy

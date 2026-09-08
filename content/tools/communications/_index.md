@@ -25,8 +25,8 @@ See [Telegram Archive](telegram-archive/) and [tg-archive](tg-archive/).
 
 **Matrix** -- Federated, open-source messaging used by several open-source and
 research communities.
-See [con/versations](conversations/) for DataLad-native Matrix archival,
-and [matrix-archive](matrix-archive/) for standalone export.
+See [con/versations](conversations/) for cron-friendly plain-text archival,
+and [matrix-archive](matrix-archive/) for JSON export with media.
 
 **Mattermost** -- Self-hosted team chat common in institutions that need on-premises
 messaging.
@@ -35,6 +35,12 @@ See [Mattermost Export](mattermost-export/) for bulk export approaches.
 **Email** -- The oldest and most universal research communication medium.
 Tools like offlineimap and mbsync can synchronize mailboxes locally
 for git-annex archival.
+See [msgvault](msgvault/) for a local, searchable archive of email
+(Gmail, Outlook, MBOX, PST) together with chat, calendar, and contacts.
+
+**Multi-platform** -- [msgvault](msgvault/) also covers Teams, Discord, Slack,
+and Beeper-bridged messengers in one SQLite store with full-text and semantic search,
+though without git-annex integration.
 
 ## Common Patterns
 
@@ -46,5 +52,5 @@ Most communication archival tools follow a similar workflow:
 4. Optionally render to static HTML for browsing
 
 The key differentiator is **integration depth** --
-some tools produce DataLad datasets directly,
-while others require manual import steps.
+some tools write plain files that drop straight into a git or git-annex repository,
+while others keep their own database and need an export or snapshot step.

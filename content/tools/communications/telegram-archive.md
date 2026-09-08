@@ -27,8 +27,9 @@ tool provides a Telegram-like web interface for browsing archived messages.
 
 - **Incremental backups**: Only downloads new messages since the last run,
   configurable on a cron schedule (default: every 6 hours).
-- **Real-time listener**: Optional WebSocket-based listener captures message
-  edits, deletions, and new messages as they happen.
+- **Real-time listener**: Optional Telegram event listener captures message
+  edits, deletions, and new messages as they happen, pushed to the web viewer
+  over WebSocket.
 - **Media preservation**: Downloads photos, videos, documents, stickers, GIFs,
   voice messages, and audio files. Media deduplication via symlinks conserves
   disk space.
@@ -70,7 +71,9 @@ Key configuration variables in `.env`:
 - `CHAT_IDS` for whitelist mode
 - `ENABLE_LISTENER=true` for real-time synchronization
 
-## git-annex Integration
+## git-annex / DataLad Integration
+
+**Integration level: external.**
 
 Telegram-Archive requires manual integration with git-annex since it manages
 its own storage via SQLite/PostgreSQL and a media directory. To archive the
@@ -104,7 +107,9 @@ message data that is more git-friendly:
 
 ## AI Readiness
 
-**ai-partial** -- The tool stores messages in a structured database (SQLite or
+**Level: ai-partial.**
+
+The tool stores messages in a structured database (SQLite or
 PostgreSQL) and supports JSON export with date filtering, making the textual
 content accessible to language models. However, the archive also contains
 substantial binary media (photos, videos, voice messages, stickers) that

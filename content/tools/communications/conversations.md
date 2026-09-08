@@ -1,12 +1,12 @@
 ---
 title: "con/versations"
 date: 2026-02-12
-description: "Matrix room archival CLI with DataLad-native storage and cron-friendly operation"
-summary: "Python CLI tool for archiving Matrix chat rooms into date-organized plain text files, built on matrix-nio with DataLad-native workflow support."
+description: "Matrix room archival CLI writing plain-text daily logs, built for cron-driven operation"
+summary: "Python CLI tool for archiving Matrix chat rooms into date-organized plain text files, built on matrix-nio. Its plain-file output drops straight into a git repository."
 categories: ["Communications"]
-tags: ["CON", "matrix", "datalad", "export", "messages", "rooms"]
+tags: ["CON", "matrix", "export", "messages", "rooms"]
 media_types: ["matrix"]
-integrations: ["native-datalad"]
+integrations: ["git-only"]
 ai_readiness: ["ai-ready"]
 params:
   repo: "https://github.com/con/versations"
@@ -21,9 +21,9 @@ params:
 con/versations is a lightweight Python CLI tool for archiving Matrix chat room
 messages into plain text files organized by room and date. Built on the
 [matrix-nio](https://github.com/matrix-nio/matrix-nio) library, it is designed
-for unattended, scheduled operation via cron and integrates naturally with
-DataLad datasets for versioned, provenance-tracked archival of Matrix
-conversations.
+for unattended, scheduled operation via cron. Because it writes nothing but
+small text files, its output can be tracked in a plain git repository or a
+DataLad dataset without any adaptation.
 
 ## Key Features
 
@@ -53,8 +53,9 @@ sudo dnf install libolm-devel
 
 ## Installation
 
+The package is not published on PyPI; install from the repository:
+
 ```bash
-# From PyPI or source
 pip install git+https://github.com/con/versations
 
 # Or clone and install
@@ -65,41 +66,39 @@ pip install .
 
 ## Usage
 
+Connection settings are read from `MATRIX_*` environment variables
+(homeserver, user, password, E2E key file and passphrase);
+`MATRIX_STORE_PATH` sets the output directory (default `./output/`).
+
 ```bash
 # Basic usage -- see all options
 versations --help
 
-# Archive messages from joined rooms
-versations /path/to/archive/
+# Sync messages from all joined rooms (or one room with --room)
+MATRIX_STORE_PATH=/path/to/archive versations sync
 
-# Send a message to a room
-versations --send "Archive run complete" --room '!roomid:server'
+# Send a message to a room, from the command line or a file
+versations send --room '!roomid:server' "Archive run complete"
 ```
 
-## DataLad Integration
+## git-annex / DataLad Integration
 
-con/versations is designed as a DataLad-native archival tool. The plain text
-output format and date-based directory structure make it ideal for tracking
-in a DataLad dataset:
+**Integration level: native-datalad.**
+
+con/versations has no git or DataLad awareness of its own; upstream does not
+mention either. Its plain text output and date-based directory structure
+simply make it easy to track. One way to do so is to point
+`MATRIX_STORE_PATH` at a DataLad dataset and wrap each sync in `datalad run`
+so the archive grows as a sequence of provenance-carrying commits:
 
 ```bash
-# Create a DataLad dataset for Matrix archives
 datalad create matrix-archive
 cd matrix-archive
-
-# Run versations under datalad run for provenance
-datalad run -m "Matrix room sync $(date -I)" \
-  --output . \
-  versations .
-
-# Schedule periodic archival via cron
-# 0 */4 * * * cd /path/to/matrix-archive && datalad run -m "Scheduled Matrix sync" versations .
+MATRIX_STORE_PATH=. datalad run -m "Matrix room sync $(date -I)" versations sync
 ```
 
-Each sync produces a clean DataLad commit showing exactly which rooms had
-new messages and what was added. The plain text format means all content
-is stored directly in git (not annex), making it fully searchable with
-`git log -S` and `git grep`.
+All content is small text, so it lands in git proper (not the annex) and is
+searchable with `git log -S` and `git grep`.
 
 ## Output Format
 
@@ -116,11 +115,13 @@ archive/
 ```
 
 Each date file contains the day's messages in plain text, one message per
-line with timestamp and sender information.
+line in the form `HH:MM:SS | @sender:server: body`.
 
 ## AI Readiness
 
-**ai-ready** -- The plain text output is the most AI-friendly format possible.
+**Level: ai-ready.**
+
+The plain text output is the most AI-friendly format possible.
 Messages are stored as human-readable text organized chronologically, ready
 for direct ingestion by language models without any parsing or conversion.
 Room organization provides natural topic segmentation. The absence of binary
@@ -130,5 +131,5 @@ search, and knowledge extraction.
 ## See Also
 
 - [matrix-archive]({{< ref "matrix-archive" >}}) -- Alternative Matrix
-  archival tool that produces YAML output with media download support,
+  archival tool that produces JSON event logs with media download support,
   better suited when media preservation is important.

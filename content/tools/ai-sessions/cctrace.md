@@ -1,8 +1,8 @@
 ---
 title: "cctrace"
 date: 2026-02-12
-description: "Claude Code conversation capture tool that extracts and formats session transcripts"
-summary: "Captures Claude Code sessions from local JSONL storage and produces structured transcripts for archival in git repositories"
+description: "Export Claude Code sessions to markdown, XML, and portable bundles that can be re-imported elsewhere"
+summary: "Exports Claude Code sessions from local JSONL storage as markdown, XML, and raw JSONL, and packages them as portable bundles that another user can import and resume"
 categories: ["AI Sessions"]
 tags: ["claude-code", "transcript", "capture", "conversation"]
 media_types: ["ai-sessions"]
@@ -18,10 +18,12 @@ params:
   last_verified: "2026-02"
 ---
 
-cctrace is a lightweight Python tool for extracting Claude Code session transcripts
+cctrace is a set of Python scripts for exporting Claude Code session transcripts
 from the local JSONL files that Claude Code stores in `~/.claude/projects/`.
 It reads the raw session data, parses the conversation structure,
-and outputs formatted transcripts suitable for archival in a git repository.
+and writes formatted transcripts and portable session bundles
+suitable for archival in a git repository -- and for re-importing
+a session on another machine.
 
 ## How It Works
 
@@ -40,87 +42,70 @@ producing output that preserves:
 
 ## Installation
 
-Install from PyPI:
+cctrace is not on PyPI; clone the repository and run its setup script,
+which copies the scripts to `~/claude_sessions/` and installs the
+`/export-session` and `/import-session` slash commands:
 
 ```bash
-pip install cctrace
+git clone https://github.com/jimmc414/cctrace.git
+cd cctrace && ./setup.sh
 ```
 
-Or with uv:
+## Usage
 
 ```bash
-uv pip install cctrace
+# Export the most recent session of the current project
+python3 ~/claude_sessions/export_claude_session.py
+
+# Export a specific session
+python3 ~/claude_sessions/export_claude_session.py --session-id <session-id>
+
+# Export a portable bundle into the repository (.claude-sessions/<name>/)
+python3 ~/claude_sessions/export_claude_session.py --in-repo --export-name my-feature
+
+# Import a bundle exported by someone else
+python3 ~/claude_sessions/import_session.py .claude-sessions/my-feature/
 ```
 
-## Basic Usage
-
-List available sessions for the current project:
-
-```bash
-cctrace list
-```
-
-Export a specific session:
-
-```bash
-cctrace export <session-id>
-```
-
-Export all sessions for the current project:
-
-```bash
-cctrace export --all
-```
+Inside Claude Code the same operations are available as `/export-session`
+and `/import-session`.
 
 ## Output Formats
 
-cctrace produces structured transcript output that is both human-readable
-and machine-parseable.
-The output includes clear delineation between human and assistant turns,
-tool call details, and session metadata headers.
+A classic export (to `~/claude_sessions/exports/`) contains
+`raw_messages.jsonl`, `conversation_full.md`, `conversation_full.xml`,
+`session_info.json`, and `summary.txt`.
+An in-repo export is a portable `.claude-sessions/<name>/` tree with a
+manifest, a rendered markdown transcript, the session JSONL, and the
+file history, todos, and plan needed to resume the session elsewhere.
 
-The structured output is `ai-ready` --
-an LLM can consume it directly to understand what happened in a session,
-review the decisions that were made,
-or continue work from where a previous session left off.
+## git-annex / DataLad Integration
 
-## Archival Workflow
+**Integration level: git-only.**
 
 A typical workflow for archiving Claude Code sessions with cctrace:
 
-1. After a coding session, run `cctrace export --all` to extract new transcripts
-2. Store the output in a dedicated directory (e.g., `sessions/` or `.ai-sessions/`)
-3. Commit the transcripts to git
-4. Optionally, use git-annex for large transcript files
+1. After a coding session, run the in-repo export so the bundle lands in `.claude-sessions/`
+2. Commit the bundle to git
+3. Optionally, use git-annex for large transcript files
 
 For automated archival, combine cctrace with
-[Claude Code Hooks](../claude-code-hooks/) --
-a `SessionEnd` hook can trigger `cctrace export` automatically
-after each session completes.
-
-Example hook script:
-
-```bash
-#!/bin/bash
-# .claude/hooks/session-end.sh
-SESSION_ID="$1"
-cctrace export "$SESSION_ID" >> sessions/archive.jsonl
-git add sessions/archive.jsonl
-git commit -m "Archive AI session $SESSION_ID"
-```
+[Claude Code Hooks]({{< ref "claude-code-hooks" >}}) --
+a `SessionEnd` hook receives the session ID on standard input
+and can run the export script with `--session-id`.
 
 ## Comparison with Other Tools
 
 cctrace focuses on simplicity and directness.
 It reads local files and produces formatted output --
-no shadow branches, no metadata indexes, no multi-tool support.
+no git refs of its own, no indexes, no multi-tool support.
 
 For projects that need only Claude Code transcript archival
 and prefer a minimal dependency footprint,
 cctrace is a practical choice.
 For more comprehensive session management,
-see [Entire.io](../entire-io/) (shadow branches, attribution, multi-tool)
-or [ccexport](../ccexport/) (multiple output formats).
+see [Entire.io]({{< ref "entire-io" >}}) (checkpoint refs, multi-tool)
+or [ccexport]({{< ref "ccexport" >}}) (readable markdown/HTML with secret redaction).
 
 ## Limitations
 
@@ -128,14 +113,22 @@ or [ccexport](../ccexport/) (multiple output formats).
   The output format and CLI interface may change.
 - **Claude Code only** -- Does not support other AI tools
   (Cursor, Copilot, etc.).
-- **No incremental export** -- Each export re-reads the full session;
-  there is no built-in mechanism to export only new turns
-  since the last archival run.
+- **Script collection, not a package** -- installed by a setup script into
+  the home directory; there is no PyPI release.
 - **Local storage dependency** -- If Claude Code's local storage format changes,
   cctrace will need to be updated to match.
 
+## AI Readiness
+
+**Level: ai-ready.**
+
+The markdown and XML transcripts are plain text with clear turn delineation --
+an LLM can consume it directly to understand what happened in a session,
+review the decisions that were made,
+or continue work from where a previous session left off.
+
 ## See Also
 
-- [ccexport](../ccexport/) -- Alternative export tool with markdown/JSON output
-- [Entire.io](../entire-io/) -- Git-native archival with shadow branches
-- [Claude Code Hooks](../claude-code-hooks/) -- Automate cctrace via lifecycle hooks
+- [ccexport]({{< ref "ccexport" >}}) -- Alternative export tool with markdown/HTML output
+- [Entire.io]({{< ref "entire-io" >}}) -- Git-native archival as checkpoint refs
+- [Claude Code Hooks]({{< ref "claude-code-hooks" >}}) -- Automate cctrace via lifecycle hooks

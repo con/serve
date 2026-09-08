@@ -108,10 +108,11 @@ The ledger makes it explicit, version-controlled, and queryable.
 ## Concrete Use Case: OpenNeuroDerivatives
 
 [OpenNeuroDerivatives](https://github.com/OpenNeuroDerivatives)
-runs fMRIPrep and MRIQC across 784+ OpenNeuro datasets
-on the TACC Frontera supercomputer
-using [BABS](https://pennlinc-babs.readthedocs.io/)
-(which wraps execution in `datalad run`).
+runs fMRIPrep and MRIQC across roughly 600 OpenNeuro datasets
+(990+ derivative datasets)
+on the TACC Frontera supercomputer,
+submitting jobs through [ReproMan](https://github.com/ReproNim/reproman)
+and recording provenance with `datalad run`.
 
 At this scale, failures are routine:
 - Subjects that run out of memory on 32 GB nodes
@@ -165,7 +166,7 @@ formalizes these identity layers using [LinkML](https://linkml.io/):
 - **Dataset** with `version_of`, `revision_of`, `derived_from`, `alternate_of`
   relations for tracking how versions relate
 - **Distribution** for modeling the same dataset at multiple locations
-- **Checksum** (subtypes: DOI, ORCID, ISSN) for integrity and identity verification
+- **Identifier** with issued subtypes (DOI, ISSN) and computed subtypes (Checksum) for identity and integrity verification
 
 The experience ledger links execution records to datasets
 via their UUID and commit SHA --

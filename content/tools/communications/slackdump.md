@@ -13,7 +13,7 @@ params:
   homepage: "https://github.com/rusq/slackdump"
   issues: "https://github.com/rusq/slackdump/issues"
   language: "Go"
-  license: "GPL-3.0"
+  license: "AGPL-3.0-only"
   maturity: "stable"
   last_verified: "2026-02"
 ---
@@ -37,22 +37,25 @@ well-suited for long-term preservation in git-annex repositories.
     workspace metadata.
 - **Complete data coverage**: Messages, threaded replies, file attachments,
   user profiles, channel metadata, and custom emojis.
-- **Search and browse**: Built-in viewer for inspecting archives, including
-  image display in the terminal.
+- **Search and browse**: Built-in browser-based viewer for inspecting archives,
+  including images.
 - **Incremental operation**: Can resume interrupted exports.
 
 ## Output Format
 
-Slackdump produces JSON output across all modes. The **Export** mode generates
-a directory structure matching Slack's official export format:
+Slackdump's **Export** and **Dump** modes produce JSON; the **Archive** mode
+stores its native format as JSON+gzip or an SQLite database. Export mode
+generates a directory structure matching Slack's official export format:
 
 ```
 export/
   channels.json
   users.json
-  2026-01-15/
-    general.json
-    random.json
+  general/
+    2026-01-15.json
+    2026-01-16.json
+  random/
+    2026-01-15.json
   ...
 ```
 
@@ -71,14 +74,14 @@ brew install slackdump
 # Download from https://github.com/rusq/slackdump/releases
 
 # From source
-go install github.com/rusq/slackdump/v3/cmd/slackdump@latest
+go install github.com/rusq/slackdump/v4/cmd/slackdump@latest
 ```
 
 ## Usage
 
 ```bash
-# Authenticate (interactive browser-based login)
-slackdump auth
+# Add a workspace and authenticate (interactive browser-based login)
+slackdump workspace new myworkspace
 
 # Export entire workspace in Slack export format
 slackdump export -o workspace-export
@@ -93,7 +96,9 @@ slackdump list channels
 slackdump list users
 ```
 
-## git-annex Integration
+## git-annex / DataLad Integration
+
+**Integration level: git-annex.**
 
 Slackdump output integrates naturally with git-annex for long-term archival.
 JSON message files are text and can be stored directly in git for
@@ -128,18 +133,20 @@ datalad run -m "Incremental Slack export" \
 
 ## AI Readiness
 
-**ai-ready** -- Slackdump's JSON output is fully structured with typed fields
+**Level: ai-ready.**
+
+Slackdump's JSON output is fully structured with typed fields
 for timestamps, user IDs, message text, thread relationships, reactions, and
 file metadata. This format can be directly ingested by language models for
 summarization, search indexing, or knowledge extraction without any
 preprocessing. File attachments (images, PDFs) would require separate
 processing for content extraction.
 
-## Considerations
+## Limitations
 
 - Slack may send security alerts to workspace administrators when slackdump
   accesses the API, depending on workspace security policies.
 - Rate limiting applies; large workspaces may take considerable time to export.
 - User tokens expire and may need periodic renewal.
-- For DataLad-native Slack archival with tighter integration, see
-  [wayslack2]({{< ref "wayslack2" >}}).
+- For a lighter Python alternative that writes the same Slack export format
+  incrementally, see [wayslack2]({{< ref "wayslack2" >}}).

@@ -45,113 +45,76 @@ Lab-in-a-Box encodes all of this in Python using pyinfra. The deployment is:
 
 ## What Gets Deployed
 
-A Lab-in-a-Box deployment sets up the following services:
+The liab-deployments service catalog currently covers:
 
-### Core Services
+| Service | Purpose |
+|---------|---------|
+| [Forgejo-Aneksajo]({{< ref "forgejo-aneksajo" >}}) | Git forge with git-annex support: dataset hosting, code repos, issue tracking |
+| forgejo-runner | CI runner for Forgejo Actions |
+| [HedgeDoc]({{< ref "hedgedoc" >}}) | Collaborative markdown editor (SQLite-backed) |
+| [copyparty]({{< ref "copyparty" >}}) | File sharing and upload front-end |
+| [Photoview]({{< ref "photoview" >}}) | Photo gallery over a directory tree |
+| ntfy | Push notifications |
+| gatus | Uptime monitoring |
+| dumpthings | Data dump viewer |
+| gitannex-staticwww | Static websites served from git-annex repositories |
 
-| Service | Purpose | Details |
-|---------|---------|---------|
-| [Forgejo-Aneksajo]({{< ref "forgejo-aneksajo" >}}) | Git forge with git-annex support | Primary dataset hosting, code repos, issue tracking |
-| [HedgeDoc]({{< ref "hedgedoc" >}}) | Collaborative markdown editor | Meeting notes, lab notebooks, brainstorming |
-
-### Supporting Infrastructure
-
-| Component | Purpose |
-|-----------|---------|
-| Reverse proxy (Caddy/Nginx) | TLS termination, routing, automatic HTTPS |
-| PostgreSQL | Database backend for Forgejo and HedgeDoc |
-| Backup scripts | Automated backup of databases and git repositories |
-| Monitoring | Basic health checks and alerting |
+Caddy provides TLS termination and per-subdomain routing for all of them.
 
 ## Architecture
 
+Every service follows the same pattern on a bare Debian server:
+
+1. A dedicated system user (nologin shell, disabled password, fixed UID)
+2. A rootless Podman container managed by a user-space systemd unit,
+   with `loginctl enable-linger` so it survives logout
+3. A Caddy reverse-proxy block for TLS and subdomain routing
+
 ```
-                          Internet
-                             |
-                        [Reverse Proxy]
-                        (Caddy + TLS)
-                       /       |
-                      /        |
-            forgejo.lab.org   hedgedoc.lab.org
-                  |                |
-          [Forgejo-Aneksajo]  [HedgeDoc]
-                  |                |
-              [PostgreSQL]    [PostgreSQL]
-                  |
-          [Filesystem Storage]
-          /data/forgejo/
-            - git repos
-            - annex content
-            - LFS objects
+Internet
+   |
+ Caddy (:443) -- TLS termination
+   |
+   +-- forgejo.lab.org  -> localhost:4000   (Podman, user "git")
+   +-- hedgedoc.lab.org -> localhost:30000  (Podman, user "hedgedoc")
+   +-- photos.lab.org   -> localhost:...    (Podman, user "photoview")
+   +-- ...
 ```
 
-All services run on a single machine (the "box") or can be distributed across multiple hosts by adjusting the pyinfra inventory.
+Only Caddy is exposed; services bind to localhost. UFW allows SSH and HTTP(S)
+only, fail2ban watches sshd, and secrets in the inventory are encrypted with
+privy and decrypted at deploy time from `PRIVY_PASSWORD`.
 
 ## Usage
 
-### Prerequisites
-
-- A Debian/Ubuntu server with SSH access
-- Python 3.10+ on your local machine
-- pyinfra installed (`pip install pyinfra`)
-
-### Deployment
+Inventories are Python dictionaries in the deployment scripts, keyed by
+service, with per-site entries such as `serve_address`, `container_tag`,
+`host_port`, `user` (a `(name, uid)` tuple), and a config asset:
 
 ```bash
-# Clone the deployment repository
 git clone https://hub.psychoinformatics.de/lab-in-a-box/liab-deployments.git
 cd liab-deployments
 
-# Configure your target host and domain
-cp inventory.example.py inventory.py
-# Edit inventory.py with your server details
+# Bootstrap a fresh Debian server
+pyinfra inventory.py deployments/bootstrap_server_mih-style.py
 
-# Deploy everything
-pyinfra inventory.py deploy.py
+# Deploy a service
+pyinfra inventory.py liab_deployments/deploy/hedgedoc.py
+
+# Provision Forgejo user accounts from a TSV file
+pyinfra inventory.py deployments/forgejo_aneksajo_users.py
 ```
 
-### Updating
-
-```bash
-# Pull latest deployment configs
-git pull
-
-# Re-run -- pyinfra only applies changes
-pyinfra inventory.py deploy.py
-```
-
-### Deploying Individual Services
-
-```bash
-# Deploy only Forgejo-Aneksajo
-pyinfra inventory.py deploys/forgejo.py
-
-# Deploy only HedgeDoc
-pyinfra inventory.py deploys/hedgedoc.py
-```
+Re-running a deployment applies only the delta. See the repository's
+`CONTRIBUTING.md` for the inventory keys and the two deployment styles
+(older scripts under `deployments/`, newer ones under `liab_deployments/deploy/`).
 
 ## Configuration as Code
 
-All configuration lives in the git repository:
-
-```
-liab-deployments/
-  inventory.py           # Target hosts
-  deploy.py              # Main deployment entrypoint
-  deploys/
-    forgejo.py           # Forgejo-Aneksajo deployment
-    hedgedoc.py          # HedgeDoc deployment
-    caddy.py             # Reverse proxy and TLS
-    postgres.py          # Database setup
-    backup.py            # Backup configuration
-  templates/
-    forgejo/app.ini.j2   # Forgejo configuration template
-    caddy/Caddyfile.j2   # Reverse proxy config
-  group_data/
-    all.py               # Shared variables (domains, paths, versions)
-```
-
-Because this is all in git, every change to the infrastructure is tracked, attributable, and reversible. You can `git diff` to see what changed, `git blame` to see who changed it, and `git revert` to undo a problematic change.
+Because the inventories, deployment scripts, and config assets all live in
+git, every change to the infrastructure is tracked, attributable, and
+reversible. You can `git diff` to see what changed, `git blame` to see who
+changed it, and `git revert` to undo a problematic change.
 
 ## git-annex / DataLad Integration
 
@@ -190,12 +153,12 @@ Lab-in-a-Box is the **integration point** for the entire con/serve infrastructur
 
 For a research group, Lab-in-a-Box answers the question: "We have a server and we want to own our research data infrastructure. What do we install?" The answer is: run the Lab-in-a-Box deployment and you have everything you need.
 
-## Limitations and Caveats
+## Limitations
 
-- **Alpha status**: The deployment is functional but the service lineup and configuration structure are still evolving.
+- **Alpha status**: The deployment is functional but the service lineup and configuration structure are still evolving, and two deployment styles coexist.
 - **Single-box focus**: The default deployment targets a single server. Multi-server deployments are possible but require manual inventory configuration.
-- **Debian/Ubuntu only**: The pyinfra operations target Debian-family distributions. Other distributions would require adaptation.
-- **No built-in monitoring stack**: Basic health checks are included but a full monitoring solution (Prometheus, Grafana) is not yet part of the bundle.
+- **Debian only**: The pyinfra operations target bare Debian servers. Other distributions would require adaptation.
+- **Monitoring is basic**: gatus uptime checks and ntfy notifications are included; there is no metrics stack (Prometheus, Grafana).
 
 ## See Also
 

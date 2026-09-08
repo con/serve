@@ -20,7 +20,7 @@ params:
     - title: "con/annextube (DataLad-native wrapper)"
       url: "https://github.com/con/annextube"
     - title: "git-annex importfeed"
-      url: "https://git-annex.branchable.com/tips/using_the_web_as_a_special_remote/"
+      url: "https://git-annex.branchable.com/tips/downloading_podcasts/"
     - title: "Tube Archivist"
       url: "https://www.tubearchivist.com/"
     - title: "Archive Team YouTube Project"
@@ -29,7 +29,7 @@ params:
 
 **yt-dlp** is a feature-rich command-line video and audio downloader that supports extraction from thousands of websites. It is the actively maintained fork of youtube-dl, with significant improvements in speed, features, and site support. In the con/serve ecosystem, yt-dlp serves as both a standalone archival tool and the download engine powering [annextube]({{< ref "annextube" >}}).
 
-## Overview
+## Key Features
 
 yt-dlp can download video, audio, subtitles, thumbnails, and metadata from YouTube and [thousands of other sites](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md). For archival purposes, its key strengths are:
 
@@ -58,7 +58,9 @@ brew install yt-dlp
 uv pip install yt-dlp
 ```
 
-## Standalone Usage with git-annex
+## git-annex / DataLad Integration
+
+**Integration level: git-annex.**
 
 While [annextube]({{< ref "annextube" >}}) provides a fully integrated DataLad experience, yt-dlp can be used directly with git-annex for simpler archival needs.
 
@@ -81,7 +83,7 @@ git commit -m "Archive video VIDEO_ID"
 
 ### Using `git annex importfeed` for Podcast and Video Feeds
 
-git-annex has built-in support for importing RSS/Atom feeds, which works well with podcast feeds and YouTube channel RSS feeds:
+git-annex has built-in support for importing RSS/Atom feeds, which works well with podcast feeds:
 
 ```bash
 git init podcast-archive && cd podcast-archive
@@ -89,13 +91,9 @@ git annex init "podcast archive"
 
 # Import from a podcast RSS feed
 git annex importfeed https://example.com/podcast/feed.xml
-
-# Import from a YouTube channel RSS feed
-git annex importfeed \
-  'https://www.youtube.com/feeds/videos.xml?channel_id=CHANNEL_ID'
 ```
 
-The `importfeed` approach is lightweight and does not require yt-dlp at all, but it only captures the media files linked in the feed, not the full metadata that yt-dlp provides.
+For podcast enclosures `importfeed` does not need yt-dlp at all. YouTube channel feeds have no enclosures; git-annex can still handle them by calling yt-dlp behind the scenes, but that path is disabled by default for security reasons and must be enabled explicitly (see the `annex.security.allowed-ip-addresses` setting in the [git-annex documentation](https://git-annex.branchable.com/git-annex-importfeed/)). Either way `importfeed` captures only the media files, not the full metadata that yt-dlp provides.
 
 ### Batch Archival with Metadata
 
@@ -120,7 +118,7 @@ yt-dlp \
   "$CHANNEL_URL"
 
 # Separate large files (annex) from metadata (git)
-git annex add --include='*.mp4' --include='*.webm' --include='*.mkv'
+git annex add --include='*.mp4' --or --include='*.webm' --or --include='*.mkv'
 git add --all  # metadata files go to git
 git commit -m "Archive update $(date -I)"
 ```
@@ -160,11 +158,11 @@ yt-dlp is the general-purpose download engine; [annextube]({{< ref "annextube" >
 | Aspect | yt-dlp (standalone) | annextube |
 |--------|-------------------|-----------|
 | Download capability | Full | Full (via yt-dlp) |
-| Site support | 1000+ sites | YouTube-focused |
+| Site support | Thousands of sites | YouTube-focused |
 | git-annex integration | Manual | Automatic |
 | DataLad datasets | Manual setup | Automatic |
 | Incremental updates | Via `--download-archive` | Built-in |
-| Provenance tracking | None | DataLad run records |
+| Provenance tracking | None | `datalad run` (optional) |
 | Metadata organization | Flat or custom | Structured per-video dirs |
 
 **When to use yt-dlp directly:**
@@ -181,7 +179,7 @@ yt-dlp is the general-purpose download engine; [annextube]({{< ref "annextube" >
 
 ## AI Readiness
 
-yt-dlp produces **ai-partial** output:
+**Level: ai-partial.**
 
 - **info.json** files are structured, machine-readable metadata -- immediately usable
 - **Subtitle files** (VTT, SRT) provide time-stamped transcripts of video content

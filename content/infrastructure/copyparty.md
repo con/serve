@@ -17,15 +17,13 @@ params:
   last_verified: "2026-02"
 ---
 
-## Overview
-
-[copyparty](https://github.com/9001/copyparty) is a portable, self-contained file server that turns any machine into a multi-protocol file sharing hub. It ships as a single Python file (`copyparty-sfx.py`) or standalone executable with no mandatory dependencies beyond Python 3.3+. It supports HTTP(S), WebDAV, SFTP, FTP(S), and TFTP simultaneously, with resumable uploads, content-based deduplication, a media indexer, and a feature-rich web interface.
+[copyparty](https://github.com/9001/copyparty) is a portable, self-contained file server that turns any machine into a multi-protocol file sharing hub. It ships as a single Python file (`copyparty-sfx.py`) or standalone executable; the server needs only Python, and every other dependency is optional (SFTP, for example, needs paramiko). It supports HTTP(S), WebDAV, SFTP, FTP(S), and TFTP simultaneously, with resumable uploads, content-based deduplication, a media indexer, and a feature-rich web interface.
 
 copyparty fills a niche that heavier solutions (Nextcloud, Seafile) often overshoot: **quick, low-ceremony file sharing** within a research group or across devices, without requiring a database, Docker orchestration, or account provisioning.
 
 ## Key Features
 
-- **Multi-protocol** -- serves files over HTTP(S), WebDAV, SFTP, FTP(S), TFTP, and even SMB/CIFS from a single process
+- **Multi-protocol** -- serves files over HTTP(S), WebDAV, SFTP, FTP(S), TFTP, and (unsafe, LAN-only) SMB/CIFS from a single process
 - **Resumable uploads** -- accelerated, multithreaded "up2k" uploads with no filesize limit and automatic resume on failure
 - **Content-based deduplication** -- duplicate uploads are detected by content hash and replaced with symlinks, saving storage
 - **Rich web UI** -- file manager with cut/paste/rename, grid-view thumbnails, audio/video player with transcoding, markdown editor, image gallery, CBZ comic reader, syntax-highlighted text viewer
@@ -34,7 +32,7 @@ copyparty fills a niche that heavier solutions (Nextcloud, Seafile) often oversh
 - **Per-user permissions** -- configurable read/write/admin per folder, per user
 - **Zeroconf** -- mDNS/SSDP announcement for automatic discovery on local networks
 
-## Role in the VAULT
+## Role in the Vault
 
 In the con/serve architecture, copyparty can serve as a **low-friction ingestion front-end**. Research collaborators, lab instruments, or field devices can upload files via any supported protocol (a simple WebDAV mount, FTP push, or drag-and-drop in the web UI). Those files can then be periodically swept into git-annex for permanent archival:
 
@@ -89,14 +87,14 @@ or [Photoview]({{< ref "photoview" >}}).
 
 ```bash
 # Browse a photo collection with zero setup
-python3 copyparty-sfx.py -a photos::r ~/vault/personal/photos
+python3 copyparty-sfx.py -v ~/vault/personal/photos:photos:r
 # Open http://localhost:3923/photos/ in browser
 ```
 
 ## See Also
 
 - [Ingestion Patterns]({{< ref "ingestion-patterns" >}}) -- patterns for bringing external files into git-annex
-- [Lab-in-a-Box]({{< ref "lab-in-a-box" >}}) -- the pyinfra-based lab deployment that could include copyparty as a service
+- [Lab-in-a-Box]({{< ref "lab-in-a-box" >}}) -- the pyinfra-based lab deployment, whose service catalog includes copyparty
 - [rclone]({{< ref "rclone" >}}) -- can bridge between copyparty's WebDAV and git-annex special remotes
 - [PhotoPrism]({{< ref "photoprism" >}}) -- full-featured photo management with AI classification
 - [Photoview]({{< ref "photoview" >}}) -- lightweight photo gallery for structured collections

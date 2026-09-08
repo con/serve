@@ -44,6 +44,6 @@ The typical workflow for cloud storage archival:
 4. Optionally configure the same rclone remote as a git-annex special remote
    for outbound replication
 
-For providers with REST APIs (S3, Google Cloud Storage, Azure Blob),
-git-annex also has native special remote implementations
+For S3 and S3-compatible providers (including Google Cloud Storage's
+S3 interoperability layer), git-annex also has a built-in special remote
 that can be used without rclone.

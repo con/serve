@@ -1,12 +1,12 @@
 ---
 title: "citations-collector"
 date: 2026-02-12
-description: "Multi-source scholarly citation discovery, PDF acquisition, and curation with DataLad integration and LinkML schema"
-summary: "Discovers citations across CrossRef, OpenCitations, DataCite, and OpenAlex; syncs with Zotero; acquires PDFs with git-annex provenance tracking; and stores everything in a DataLad dataset using a LinkML schema aligned with CiTO and FaBiO ontologies."
+description: "Multi-source scholarly citation discovery, open-access PDF acquisition, and Zotero sync, designed to run under datalad run with PDFs in git-annex"
+summary: "Discovers citations across CrossRef, OpenCitations, DataCite, and OpenAlex; syncs with Zotero; fetches open-access PDFs via Unpaywall into git-annex; and records everything in TSV files following a LinkML schema aligned with CiTO and FaBiO. Built to be driven by datalad run inside a DataLad dataset, as dandi-bib does daily."
 categories: ["Publications"]
-tags: ["CON", "citations", "scholarly", "crossref", "opencitations", "datacite", "openale", "zotero", "pdf", "provenance"]
+tags: ["CON", "citations", "scholarly", "crossref", "opencitations", "datacite", "openalex", "zotero", "pdf", "provenance"]
 media_types: ["publications"]
-standards: ["LinkML", "JSON", "YAML", "JSON-LD"]
+standards: ["LinkML", "TSV", "YAML"]
 integrations: ["native-datalad"]
 ai_readiness: ["ai-ready"]
 params:
@@ -16,10 +16,13 @@ params:
   language: "Python"
   license: "MIT"
   maturity: "alpha"
-  last_verified: "2026-02"
+  last_verified: "2026-09"
+  examples:
+    - title: "dandi-bib citations pipeline"
+      url: "https://github.com/dandi/dandi-bib/tree/master/citations"
 ---
 
-**citations-collector** is a tool for building and maintaining comprehensive, version-controlled collections of scholarly citations. Given a set of seed publications (your lab's papers, a project's key references), it discovers all citing and cited works across multiple sources, acquires full-text PDFs where available, syncs with Zotero for reference management, and stores everything in a DataLad dataset with full provenance tracking.
+**citations-collector** is a tool for building and maintaining comprehensive, version-controlled collections of scholarly citations. Given a set of seed publications (your lab's papers, a project's key references), it discovers citing works across multiple sources, fetches open-access PDFs where available, syncs with Zotero for reference management, and records everything in plain TSV files that can be tracked in git, with PDFs optionally in git-annex.
 
 ## The Problem
 
@@ -30,28 +33,19 @@ Scholarly citation management is fragmented:
 - **Reference management** lives in Zotero or Mendeley -- proprietary databases that do not version-track changes or integrate with data management workflows.
 - **Citation relationships** (who cites whom, and how) are not captured in reference managers at all.
 
-citations-collector addresses all four problems in a single, DataLad-native workflow.
+citations-collector addresses the first three in a single, file-based workflow, and takes a first step on the fourth by classifying citation relationships with CiTO types.
 
 ## Architecture
 
 ```
-my-citations/                          # DataLad dataset
-  .datalad/
-  citations/
-    seed-papers.yaml                   # Seed publications (input)
-    discovered/
-      10.1234-paper-a.yaml             # Discovered citation records
-      10.5678-paper-b.yaml             # Each with full metadata
-      ...
-    graph/
-      citation-graph.json              # Citation relationships
+my-citations//                         # DataLad dataset
+  collection.yaml                      # Seed publications and settings (input)
+  citations.tsv                        # Discovered citations with per-source provenance (git)
   pdfs/
-    10.1234-paper-a.pdf                # git-annex (content-addressed)
-    10.5678-paper-b.pdf                # git-annex (provenance tracked)
-  zotero/
-    collection-export.json             # Zotero library sync
-  schema/
-    citation.yaml                      # LinkML schema definition
+    <doi>/article.pdf                  # git-annex
+    <doi>/article.bib                  # BibTeX record for the PDF (git)
+    <doi>/extracted_citations.json     # citation contexts from the PDF (git-annex)
+    <doi>/classifications.json         # CiTO classification of each context
 ```
 
 ### Data Model
@@ -90,105 +84,74 @@ This bridges the gap between the citation discovery pipeline and the day-to-day 
 
 ### PDF Acquisition with Provenance
 
-For each discovered citation, citations-collector attempts to acquire the full-text PDF through legal open-access channels:
+For each discovered citation, `fetch-pdfs` looks up an open-access copy through the [Unpaywall](https://unpaywall.org/) API. With `--git-annex`, each PDF is added to git-annex with its download URL registered, so `git annex whereis` shows where it came from and `git annex get` can re-fetch it after a storage failure. Other OA channels (preprint servers, institutional repositories) are not queried directly.
 
-- **Unpaywall** -- checks for open-access versions via the Unpaywall API
-- **Publisher OA repositories** -- direct links from CrossRef metadata
-- **Preprint servers** -- arXiv, bioRxiv, medRxiv, SSRN
-- **Institutional repositories** -- where available
+### Citation Context and Classification
 
-Each PDF is stored in git-annex with provenance metadata:
+Two further subcommands go beyond the citation list: `extract-contexts` pulls the sentences around each citation out of the fetched PDFs, and `classify` uses an LLM to label the relationship with CiTO types (cites as data source, cites as authority, and so on). `detect-merges` flags records that refer to the same work.
 
-```bash
-# git-annex records where the PDF was obtained
-git annex whereis pdfs/10.1234-paper-a.pdf
-# => web: https://arxiv.org/pdf/2026.12345
-# => web: https://doi.org/10.1234/paper-a (via Unpaywall)
-```
+### Designed for `datalad run`
 
-This means the acquisition source is permanently recorded. If a PDF needs to be re-downloaded (e.g., after a storage failure), git-annex knows where it came from.
-
-### Citation Graph Analysis
-
-Beyond individual citation records, citations-collector builds a citation graph that captures relationships between papers:
-
-```json
-{
-  "edges": [
-    {
-      "source": "10.1234/paper-a",
-      "target": "10.5678/paper-b",
-      "type": "cites",
-      "cito_type": "cites_as_data_source"
-    }
-  ]
-}
-```
-
-This graph enables analyses like:
-- Which of our papers has the most downstream citations?
-- What are the key "bridge" papers connecting two research areas?
-- Which datasets are most frequently cited by papers in our field?
-
-### DataLad Integration
-
-citations-collector is DataLad-native:
-
-- **Creates proper DataLad datasets** for new citation collections
-- **Uses `datalad save`** to commit changes with meaningful messages
-- **Supports incremental updates** -- re-running discovery only fetches new citations
-- **Tracks provenance** through DataLad run records
+citations-collector does not call DataLad itself; it is built to be *driven by*
+`datalad run` inside a DataLad dataset. Every output is a plain file --
+`citations.tsv` diffs cleanly in git, PDFs and extracted contexts go to
+git-annex -- and each pipeline step is idempotent and incremental, so
+re-running a `datalad run` record does the right thing. See the integration
+section below for the workflow this was developed against.
 
 ## Usage
 
-### Initialize a Citation Collection
-
 ```bash
-# Create a new citation dataset
-citations-collector init my-lab-citations
+# Describe the seed publications in collection.yaml, then discover citing works
+# (--email joins CrossRef's polite pool; --sources selects the databases)
+citations-collector discover collection.yaml --email you@example.org --output citations.tsv
 
-# Add seed publications (your lab's papers)
-citations-collector add-seed --doi 10.1234/our-paper-1
-citations-collector add-seed --doi 10.5678/our-paper-2
+# Seeds given as GitHub repositories or Zenodo concept records are expanded to DOIs
+citations-collector discover collection.yaml --expand-refs --output citations.tsv
 
-# Or import seeds from a Zotero collection
-citations-collector add-seed --zotero-collection "Lab Papers"
+# Import an existing Zotero library or a DANDI dataset's references as seeds
+citations-collector import-zotero --help
+citations-collector import-dandi --help
+
+# Fetch open-access PDFs (with a BibTeX file next to each), tracking them in git-annex
+citations-collector fetch-pdfs --config collection.yaml --git-annex
+
+# Flag records that refer to the same work
+citations-collector detect-merges --config collection.yaml --fuzzy-match
+
+# Push the collection to Zotero
+citations-collector sync-zotero --config collection.yaml
+
+# Re-run discovery: incremental by default, --full-refresh to start over
+citations-collector discover collection.yaml --full-refresh --output citations.tsv
 ```
 
-### Discover Citations
+The [USAGE guide](https://github.com/con/citations-collector/blob/master/USAGE.md) walks through the bundled ReproNim and DANDI example collections.
+
+## git-annex / DataLad Integration
+
+**Integration level: native-datalad.**
+
+The reference deployment is [dandi-bib](https://github.com/dandi/dandi-bib),
+the DANDI project's bibliography repository, which became a DataLad dataset
+on 2026-01-30 specifically to host this pipeline. Its `citations/` directory
+holds the `collection.yaml`, a Makefile whose header reads "Designed to be run
+with datalad run for reproducibility", and the outputs:
 
 ```bash
-# Discover all citing and cited works
-citations-collector discover
-
-# This queries CrossRef, OpenCitations, DataCite, and OpenAlex
-# and stores results in citations/discovered/
+# citations/Makefile targets wrap the CLI:
+#   discover -> merge (detect-merges) -> pdfs (fetch-pdfs)
+#   -> extract-contexts (--git-annex) -> classify -> zotero
+cd citations
+datalad run -m "Refresh citations" make
+git annex sync --content
 ```
 
-### Acquire PDFs
-
-```bash
-# Attempt to acquire PDFs for all discovered citations
-citations-collector acquire-pdfs
-
-# PDFs are stored in git-annex with provenance URLs
-```
-
-### Sync with Zotero
-
-```bash
-# Push discovered citations to a Zotero collection
-citations-collector sync-zotero --collection "Discovered Citations"
-```
-
-### Update
-
-```bash
-# Re-run to pick up new citations
-citations-collector discover --update
-
-# Only new citations since the last run are fetched
-```
+A daily GitHub Actions workflow runs exactly that `datalad run` after
+refreshing `dandi.bib` from the DANDI API, then pushes. The dataset's
+`.gitattributes` keeps the TSV and BibTeX in git and sends binary content
+(PDFs, `extracted_citations.json`) to git-annex, so the commit history is a
+sequence of `[DATALAD RUNCMD]` records, each replayable with `datalad rerun`.
 
 ## AI Readiness
 
@@ -198,13 +161,13 @@ citations-collector produces highly structured, AI-consumable output at every le
 
 | Component | Format | AI Use Case |
 |-----------|--------|-------------|
-| Citation records | YAML with LinkML schema | Metadata extraction, summarization |
-| Citation graph | JSON | Network analysis, relationship discovery |
+| Citation records | TSV following a LinkML schema | Metadata extraction, summarization, DuckDB queries |
+| Citation contexts | JSON | Why-cited analysis, CiTO classification |
 | PDF full text | PDF (many with text layers) | RAG, literature review, question answering |
-| Zotero export | JSON/BibTeX | Bibliography generation, duplicate detection |
+| Zotero library | via `sync-zotero` | Bibliography generation, duplicate detection |
 | LinkML schema | YAML | Schema-aware querying, validation |
 
-The structured metadata and citation graph are immediately usable by LLMs for tasks like:
+The structured metadata and citation contexts are immediately usable by LLMs for tasks like:
 
 - "Summarize the key themes across all papers citing our dataset"
 - "Identify the most influential papers in this citation network"
@@ -213,11 +176,11 @@ The structured metadata and citation graph are immediately usable by LLMs for ta
 
 The LinkML schema provides type information that AI systems can use for schema-aware processing, reducing hallucination and improving extraction accuracy.
 
-## Limitations and Caveats
+## Limitations
 
 - **Alpha status**: The tool is functional but the CLI interface, schema, and output format are still evolving.
 - **API rate limits**: CrossRef, OpenCitations, DataCite, and OpenAlex all have rate limits. Large discovery runs need to respect these.
-- **PDF availability**: Not all papers have legally accessible PDFs. The acquisition pipeline only uses open-access sources.
+- **PDF availability**: Not all papers have legally accessible PDFs. Acquisition uses Unpaywall only.
 - **Zotero API**: Zotero's API has its own rate limits and authentication requirements.
 - **Citation completeness**: No single source has complete citation data. The multi-source approach improves coverage but gaps remain, especially for very recent publications.
 
@@ -226,3 +189,4 @@ The LinkML schema provides type information that AI systems can use for schema-a
 - [Zotero]({{< ref "zotero" >}}) -- reference management integration
 - [Conservation to External Resources]({{< ref "conservation-to-external" >}}) -- publishing citation datasets
 - [Ingestion Patterns]({{< ref "ingestion-patterns" >}}) -- API extraction pattern used by citations-collector
+- [LinkML]({{< ref "/standards/linkml" >}}) -- the schema language behind the data model

@@ -1,8 +1,8 @@
 ---
 title: "Google Takeout"
 date: 2026-02-16
-description: "Export and archive your entire Google account — Gmail, Photos, Drive, YouTube, Calendar, Location History, and 50+ other services"
-summary: "Google's official data export service, producing massive archives covering Gmail, Google Photos, Drive, YouTube history, Calendar, Contacts, Location History, and dozens more services. A single Takeout dump is the largest personal data ingestion event most people will ever perform — and a critical starting point for anyone building a personal digital archive."
+description: "Export and archive your entire Google account -- Gmail, Photos, Drive, YouTube, Calendar, Location History, and 50+ other services"
+summary: "Google's official data export service, producing massive archives covering Gmail, Google Photos, Drive, YouTube history, Calendar, Contacts, Location History, and dozens more services. A single Takeout dump is the largest personal data ingestion event most people will ever perform -- and a critical starting point for anyone building a personal digital archive."
 categories: ["Cloud Storage"]
 tags: ["google", "takeout", "export", "personal-data", "gmail", "photos", "drive", "youtube", "calendar", "contacts", "location-history"]
 media_types: ["cloud-storage"]
@@ -12,8 +12,8 @@ params:
   repo: "https://github.com/google/takeout"
   homepage: "https://takeout.google.com"
   issues: "https://support.google.com/accounts/answer/3024190"
-  language: "N/A (Google service)"
-  license: "Proprietary (your data)"
+  language: "n/a (hosted service)"
+  license: "NOASSERTION"
   maturity: "stable"
   last_verified: "2026-02"
 ---
@@ -73,10 +73,11 @@ Key pain points that remain unsolved:
 - **Photo metadata reassembly** -- Google Photos stores GPS, descriptions, people tags, and album membership in sidecar `.json` files separate from the images. Merging this metadata back into EXIF is fragile and format-dependent. Various community tools exist but none are comprehensive.
 - **Deduplication across exports** -- since each Takeout is a full dump (no incremental mode), successive exports overlap massively. Identifying what is new requires content-based comparison.
 
-[rclone]({{< ref "rclone" >}}) can access Google Drive and Google Photos directly
-for incremental sync between Takeout dumps,
-but rclone's Google Photos backend is read-only
-and does not faithfully export album structure.
+[rclone]({{< ref "rclone" >}}) can access Google Drive directly
+for incremental sync between Takeout dumps.
+Its Google Photos backend is no longer useful for this purpose:
+since March 2025 it can only download photos that rclone itself uploaded,
+so Takeout remains the only complete export path for an existing photo library.
 
 ## git-annex / DataLad Integration
 
@@ -104,7 +105,7 @@ they contain structured information about years of digital activity
 (where you were, what you watched, who you communicated with)
 in machine-readable JSON.
 
-## Limitations and Caveats
+## Limitations
 
 - **No incremental export**: every Takeout is a full dump, which means deduplication against previous exports is essential
 - **Rate limited**: Google limits how frequently you can request exports and how long download links remain active

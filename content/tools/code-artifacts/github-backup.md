@@ -18,8 +18,6 @@ params:
   last_verified: "2026-02"
 ---
 
-## Overview
-
 python-github-backup (also available as the `github-backup` CLI command) creates
 local backups of GitHub repositories along with their associated metadata.  Unlike
 a simple `git clone`, it captures the full ecosystem around a repository: issues,
@@ -37,13 +35,14 @@ migrations or account closures.
   threads, labels, milestones, and assignees, saved as JSON files.
 - **Release assets** -- download release tarballs and attached binaries.
 - **Wiki backup** -- clone the wiki repository (if present).
-- **Stars and watchers** -- record who starred or watches the repository.
+- **Discussions** -- GitHub Discussions with comments and replies (`--discussions`).
+- **Starred and watched repositories** -- record which repositories the user has starred or watches (`--starred`, `--watched`).
 - **Organization-wide backup** -- iterate over all repositories in a GitHub
   organization with a single command.
 - **Incremental** -- re-running updates existing backups with new data.
 - **GitHub Enterprise support** -- works with self-hosted GitHub instances.
 
-## Basic Usage
+## Usage
 
 ```bash
 pip install github-backup
@@ -52,7 +51,7 @@ pip install github-backup
 github-backup USER --token "$GITHUB_TOKEN" \
     --repository REPO \
     --issues --pulls --milestones --labels --releases \
-    --wikis --stars --watchers \
+    --wikis --discussions \
     --output-directory ./backups/
 
 # Backup all repositories in an organization
@@ -62,20 +61,23 @@ github-backup ORG --token "$GITHUB_TOKEN" \
     --output-directory ./backups/
 ```
 
-## Output Structure
+## Output Format
 
 The backup produces a directory per repository containing:
 
 ```
-REPO/
-  repository/          # bare git clone
-  issues/              # one JSON file per issue
-  pull_requests/       # one JSON file per PR
-  milestones/          # milestone metadata
-  releases/            # release metadata + downloaded assets
-  wiki/                # wiki git repository clone
-  stars.json           # list of stargazers
-  watchers.json        # list of watchers
+<output>/
+  repositories/
+    REPO/
+      repository/      # git clone (bare or mirror on request)
+      issues/          # one JSON file per issue
+      pulls/           # one JSON file per PR
+      milestones/      # milestone metadata
+      labels/
+      releases/        # release metadata (+ assets with --assets)
+      wiki/            # wiki git repository clone
+      discussions/     # one JSON file per discussion
+  starred/             # clones of starred repositories (--all-starred)
 ```
 
 ## git-annex / DataLad Integration
@@ -100,6 +102,7 @@ github-backup ORG --token "$GITHUB_TOKEN" \
 
 # Save everything -- git-annex will handle large files automatically
 # based on .gitattributes annex.largefiles settings
+# (--all covers most content; attachments, assets, and LFS need their own flags)
 datalad save -m "GitHub backup $(date +%Y-%m-%d)"
 ```
 

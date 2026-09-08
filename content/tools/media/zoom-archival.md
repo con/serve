@@ -12,8 +12,8 @@ params:
   repo: "https://developers.zoom.us/docs/api/"
   homepage: "https://developers.zoom.us/docs/api/"
   issues: "https://developers.zoom.us/docs/api/"
-  language: "Python"
-  license: "various"
+  language: "n/a (concept page)"
+  license: "NOASSERTION"
   maturity: "concept"
   last_verified: "2026-02"
 ---
@@ -64,7 +64,7 @@ for meeting in recordings["meetings"]:
 |----------|---------|
 | `GET /users/{userId}/recordings` | List cloud recordings for a user |
 | `GET /meetings/{meetingId}/recordings` | Get recordings for a specific meeting |
-| `GET /accounts/{accountId}/recordings` | List recordings across an account (admin) |
+| `GET /accounts/{accountId}/recordings` | List recordings across an account (master account API) |
 | Download URL from recording object | Download the actual recording files |
 
 ### Authentication
@@ -97,7 +97,7 @@ python zoom_download.py --output ./recordings/
 #     meeting_info.json  -> git (metadata)
 
 # Add to git-annex
-git annex add --include='*.mp4' --include='*.m4a'
+git annex add --include='*.mp4' --or --include='*.m4a'
 git add --all  # transcripts, chat logs, metadata go to git
 git commit -m "Zoom archive update $(date -I)"
 ```
@@ -114,7 +114,7 @@ Zoom saves local recordings to:
 - **Linux**: `~/Documents/Zoom/`
 
 Each recording creates a directory with:
-- `video.mp4` -- the recording video
+- `zoom_0.mp4` -- the recording video
 - `audio_only.m4a` -- audio-only track
 - `chat.txt` -- in-meeting chat log (if any)
 
@@ -137,7 +137,7 @@ for meeting_dir in "$ZOOM_DIR"/*/; do
 done
 
 # Add to git-annex
-git annex add recordings/ --include='*.mp4' --include='*.m4a'
+git annex add recordings/ --include='*.mp4' --or --include='*.m4a'
 git add --all
 git commit -m "Import local Zoom recordings $(date -I)"
 ```
@@ -160,6 +160,8 @@ Zoom's auto-generated transcripts can be improved with:
 - **Manual correction** -- for critical meetings, reviewing and correcting the auto-generated transcript
 
 ## AI Readiness
+
+**Level: ai-manual.**
 
 Zoom recordings are **ai-manual** out of the box, but Zoom's transcript features significantly improve this:
 
@@ -187,7 +189,8 @@ What is missing is a purpose-built tool analogous to [annextube]({{< ref "annext
 ### Existing Partial Solutions
 
 - **[zoom-recording-downloader](https://github.com/ricardorodrigues-ca/zoom-recording-downloader)** -- Python script for bulk downloading cloud recordings via Zoom API
-- **[zoomdl](https://github.com/Battleman/zoomdl)** -- Go-based Zoom recording downloader (archived)
+- **[zoomdl](https://github.com/Battleman/zoomdl)** -- Python downloader for a single shared recording URL (archived in 2023)
+- **[yt-dlp]({{< ref "yt-dlp" >}})** -- has a `zoom` extractor for `zoom.us/rec/play` and `/rec/share` links, useful for one-off downloads of shared recordings
 - Various institutional scripts shared on GitHub -- search for "zoom recording backup" or "zoom archive script"
 
 None of these integrate with git-annex or DataLad, but they demonstrate the API patterns needed.
@@ -195,4 +198,4 @@ None of these integrate with git-annex or DataLad, but they demonstrate the API 
 ## See Also
 
 - [annextube]({{< ref "annextube" >}}) -- the model for what a Zoom archival tool could become
-- [yt-dlp]({{< ref "yt-dlp" >}}) -- general video download (does not support Zoom)
+- [yt-dlp]({{< ref "yt-dlp" >}}) -- general video download, including shared Zoom recording links

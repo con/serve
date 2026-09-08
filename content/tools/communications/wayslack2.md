@@ -1,10 +1,10 @@
 ---
 title: "wayslack2"
 date: 2026-02-12
-description: "DataLad-based incremental Slack workspace archival with file management"
-summary: "Python tool for incremental Slack archival using Slack's export format, with DataLad integration for versioned, provenance-tracked preservation."
+description: "Incremental Slack workspace archival into Slack's export format, with file management"
+summary: "Python tool for incremental Slack archival into Slack's export format. Published on PyPI as wayslack2, an updated release of the original wayslack."
 categories: ["Communications"]
-tags: ["slack", "datalad", "export", "incremental"]
+tags: ["slack", "export", "incremental"]
 media_types: ["slack"]
 integrations: ["git-only"]
 ai_readiness: ["ai-ready"]
@@ -13,43 +13,40 @@ params:
   homepage: "https://github.com/huyz/wayslack"
   issues: "https://github.com/huyz/wayslack/issues"
   language: "Python"
-  license: "BSD"
-  maturity: "beta"
+  license: "BSD-2-Clause"
+  maturity: "alpha"
   last_verified: "2026-02"
 ---
 
-Wayslack2 is a Python tool for incrementally archiving Slack workspaces into
-Slack's standard export format. It is an updated and maintained fork of the
-original [wayslack](https://github.com/wolever/wayslack) project, designed
-to work within DataLad datasets for versioned, provenance-tracked Slack
-preservation.
+wayslack2 is the PyPI package name of an updated release of
+[wayslack](https://github.com/wolever/wayslack), a Python tool that
+incrementally archives a Slack workspace into Slack's standard export format.
+It is not a separate project: the `wayslack2` package is built from the
+[huyz/wayslack](https://github.com/huyz/wayslack) fork and installs the same
+`wayslack` command.
 
 ## Key Features
 
 - **Incremental archival**: Downloads only new messages and files since the
   last run, making it efficient for scheduled (e.g., cron-based) operation.
 - **Slack export format**: Produces output in Slack's standard export directory
-  structure (JSON files organized by channel and date), ensuring compatibility
-  with other Slack tools and viewers.
+  structure (JSON files organized by channel and date, plus a `_files/`
+  directory), ensuring compatibility with other Slack tools and viewers.
 - **File management**: Downloads shared files and attachments. Can optionally
   delete old files from Slack to free storage on free-tier workspaces via the
-  `delete_old_files` option.
-- **SQL export**: Includes `wayslack2sql.py` for exporting archived data to a
+  `delete_old_files` option (confirmed with `--confirm-delete`).
+- **SQL export**: Includes `wayslack2sql.py` for loading archived data into a
   PostgreSQL database for querying and analysis.
-- **DataLad-native workflow**: Designed to operate within a DataLad dataset,
-  where each incremental archive run can be captured as a versioned commit
-  with full provenance.
 
-## Relationship to Original wayslack
+## Relationship to the Original wayslack
 
-The original [wayslack](https://github.com/wolever/wayslack) by Jesse Bhatt
-provided the foundational approach of incremental Slack archival to a local
-directory. Wayslack2 builds on this by:
-
-- Updating compatibility with current Slack API versions.
-- Adding the SQL export capability.
-- Targeting integration with DataLad for research-grade archival workflows.
-- Continuing maintenance as the original project became inactive.
+The original [wayslack](https://github.com/wolever/wayslack) by David Wolever
+(last released 2019) provided incremental Slack archival to a local
+directory, including the `wayslack2sql.py` exporter. The huyz fork republished
+it on PyPI as `wayslack2` (0.4.x) so that it can still be installed; its
+changelog does not document the differences, and the fork's own last commit
+dates from 2024. Upstream setup metadata still classifies the project as
+alpha and carries an "immaturity warning".
 
 ## Installation
 
@@ -64,7 +61,7 @@ pip install git+https://github.com/huyz/wayslack
 
 ```bash
 # Create an archive directory (or point to an existing one)
-wayslack2 /path/to/slack-archive
+wayslack /path/to/slack-archive
 
 # This will:
 # 1. Create the archive directory if it doesn't exist
@@ -73,39 +70,25 @@ wayslack2 /path/to/slack-archive
 # 4. Store in Slack export format
 ```
 
-Configuration is managed through a YAML configuration file that specifies
+Configuration is managed through `~/.wayslack/config.yaml`, which specifies
 the Slack token and archive options.
 
-## DataLad Integration
+## git-annex / DataLad Integration
 
-Wayslack2 is designed as a native DataLad archival tool. The recommended
-workflow:
+**Integration level: git-only.**
 
-```bash
-# Create a DataLad dataset for the Slack archive
-datalad create slack-workspace
-cd slack-workspace
-
-# Run wayslack2 under datalad run for provenance tracking
-datalad run -m "Incremental Slack archive $(date -I)" \
-  --output . \
-  wayslack2 .
-
-# Schedule periodic runs via cron
-# 0 */6 * * * cd /path/to/slack-workspace && datalad run -m "Scheduled Slack archive" wayslack2 .
-```
-
-Each run produces a DataLad commit capturing exactly what changed -- new
-messages, updated channels, downloaded files -- with a machine-readable
-run record that documents the command, inputs, and outputs.
-
-Binary file attachments are automatically managed by git-annex (based on
-the dataset's largefiles configuration), while JSON message files can remain
-in git for easy diffing and searching.
+wayslack has no git, git-annex, or DataLad awareness; upstream mentions none
+of them. What it offers is a directory of small JSON files plus downloaded
+attachments, which is easy to track: JSON in git, `_files/` in git-annex.
+A `datalad run` wrapper around `wayslack /path` is one way to record each
+incremental run as a provenance-carrying commit, but no established workflow
+for this exists yet.
 
 ## AI Readiness
 
-**ai-ready** -- Output follows Slack's standard JSON export format with
+**Level: ai-ready.**
+
+Output follows Slack's standard JSON export format with
 structured fields for messages, users, channels, and metadata. The JSON
 files are directly parseable by language models for summarization, topic
 extraction, and knowledge base construction. Thread relationships and
@@ -113,6 +96,5 @@ user references are preserved as structured data.
 
 ## See Also
 
-- [slackdump]({{< ref "slackdump" >}}) -- More feature-rich Slack export tool
-  (Go-based, multiple output modes) that can serve as an alternative data
-  source, though without native DataLad integration.
+- [slackdump]({{< ref "slackdump" >}}) -- More feature-rich and actively
+  maintained Slack export tool (Go-based, multiple output modes).

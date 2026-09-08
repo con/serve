@@ -11,7 +11,7 @@ params:
   repo: "https://github.com/hedgedoc/hedgedoc"
   homepage: "https://hedgedoc.org"
   issues: "https://github.com/hedgedoc/hedgedoc/issues"
-  language: "TypeScript"
+  language: "JavaScript"
   license: "AGPL-3.0"
   maturity: "stable"
   last_verified: "2026-02"
@@ -22,8 +22,6 @@ params:
       url: "https://demo.hedgedoc.org/"
 ---
 
-## Overview
-
 [HedgeDoc](https://hedgedoc.org) is a self-hosted, real-time collaborative markdown editor. It fills the same niche as Google Docs or HackMD but runs on your own infrastructure with no SaaS dependency. Multiple users can edit the same document simultaneously with live preview, making it ideal for meeting notes, lab notebooks, brainstorming sessions, and collaborative writing.
 
 In the con/serve stack, HedgeDoc serves as the **working surface** where ephemeral collaborative text is created. The preservation step happens when documents are exported as markdown files and committed to a git repository -- typically one hosted on [Forgejo-Aneksajo]({{< ref "forgejo-aneksajo" >}}).
@@ -31,9 +29,9 @@ In the con/serve stack, HedgeDoc serves as the **working surface** where ephemer
 ## Key Features
 
 - **Real-time collaboration** -- multiple simultaneous editors with cursor tracking and live preview
-- **Markdown-native** -- documents are plain markdown with extensions for diagrams (Mermaid), math (MathJax/KaTeX), and embedded media
+- **Markdown-native** -- documents are plain markdown with extensions for diagrams (Mermaid), math (MathJax), and embedded media
 - **Self-hosted** -- runs on your own server, no account on an external service needed
-- **Export options** -- download as markdown, HTML, or raw text
+- **Export options** -- download as markdown, HTML, or raw HTML
 - **Slide mode** -- present markdown documents as slide decks
 - **Permission model** -- documents can be private, editable by logged-in users, or publicly readable
 
@@ -50,9 +48,8 @@ HedgeDoc does not natively integrate with git. The workflow for preserving Hedge
 Because HedgeDoc documents are plain markdown, they integrate cleanly into any git workflow. A periodic export script can automate this:
 
 ```bash
-# Export a HedgeDoc document via its API
-curl -s https://hedgedoc.lab.example.org/api/notes/NOTEID/content \
-    -H "Authorization: Bearer $TOKEN" > meeting-notes/2026-02-12.md
+# Download a note's markdown (HedgeDoc 1.x; HedgeDoc 2 has a token-based /api/v2/ API)
+curl -s https://hedgedoc.lab.example.org/NOTEID/download > meeting-notes/2026-02-12.md
 
 # Commit to DataLad dataset
 datalad save -m "Export meeting notes 2026-02-12" meeting-notes/

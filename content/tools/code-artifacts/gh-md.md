@@ -1,11 +1,11 @@
 ---
 title: "gh-md"
 date: 2026-02-12
-description: "GitHub markdown backup tool for archiving wikis and markdown content from repositories"
-summary: "A tool for backing up GitHub wiki pages and markdown documentation into local files for archival and offline access."
+description: "GitHub CLI extension that syncs issues, pull requests, and discussions to local markdown files"
+summary: "A gh CLI extension that pulls a repository's issues, pull requests, and discussions into local markdown files with YAML front matter, and can push edits back."
 categories: ["Code Artifacts"]
-tags: ["github", "markdown", "backup", "wiki"]
-media_types: ["github-wiki"]
+tags: ["github", "markdown", "issues", "pull-requests", "discussions"]
+media_types: ["github-issues", "github-discussions"]
 integrations: ["git-only"]
 ai_readiness: ["ai-ready"]
 params:
@@ -18,84 +18,60 @@ params:
   last_verified: "2026-02"
 ---
 
-## Overview
-
-gh-md is a tool for backing up GitHub wiki pages and other markdown content from
-GitHub repositories.  GitHub wikis are separate git repositories
-(`REPO.wiki.git`) that are often overlooked during backups despite containing
-critical project documentation, onboarding guides, and design decisions.
-
-gh-md focuses specifically on extracting and organizing this markdown content
-into a clean, portable directory structure that can be version-controlled
-independently of the source repository.
+gh-md is a [GitHub CLI](https://cli.github.com/) extension that syncs a
+repository's issues, pull requests, and discussions to local markdown files,
+and can push local edits back.  Each item becomes one `.md` file with YAML
+front matter for the metadata and comment blocks marked by HTML comments,
+stored under `~/.gh-md/owner/repo/{issues,pulls,discussions}/N.md`
+(override the root with `GH_MD_ROOT`).
 
 ## Key Features
 
-- **Wiki backup** -- clones and organizes GitHub wiki content into structured
-  local directories.
-- **Markdown extraction** -- pulls markdown files from repositories, preserving
-  directory structure.
-- **Clean output** -- produces plain markdown files that are portable and
-  tool-agnostic.
-- **Batch processing** -- can process multiple repositories or organizations.
+- **Issues, PRs, and Discussions** -- `--issues`, `--prs`, `--discussions`
+  select what to pull.
+- **Markdown with front matter** -- plain files that are diffable, greppable,
+  and readable without the tool.
+- **Bidirectional** -- `gh md push <file>` writes local edits back to GitHub;
+  `gh md prune` removes files for items that no longer exist.
+- **Multi-repo** -- `gh md repos` lists the repositories synced so far.
 
-## Basic Usage
+## Usage
 
 ```bash
-# Clone a GitHub wiki directly (wikis are separate git repos)
-git clone https://github.com/ORG/REPO.wiki.git
+# Install as a gh extension
+gh extension install jackchuka/gh-md
 
-# Or use gh-md for structured backup
-gh-md backup --repo owner/repo --output ./wiki-archive/
+# Pull everything for a repository
+gh md pull owner/repo
+
+# Only discussions
+gh md pull owner/repo --discussions
 ```
 
 ## Alternative Approaches
 
-GitHub wikis can also be archived through several other methods:
-
-- **Direct git clone** -- every GitHub wiki is a git repository at
-  `https://github.com/OWNER/REPO.wiki.git`.  A simple `git clone` captures
-  the full wiki with history.
-- **python-github-backup** -- includes `--wikis` flag for wiki backup as part
-  of a comprehensive repository backup.
-- **GitHub API** -- the REST API provides access to wiki page content, though
-  not as conveniently as a direct clone.
-
-For most archival scenarios, the direct `git clone` of the `.wiki.git`
-repository is the simplest and most complete approach.  gh-md adds value when
-you need structured extraction or batch processing across many repositories.
+- **python-github-backup** -- exports the same items as JSON
+  (`--issues --pulls --discussions`), better suited when the raw API records
+  matter more than readability.
+- **git-bug** -- imports issues into git refs through its bridges, keeping them
+  inside the repository rather than beside it.
+- **Wikis** are not covered by gh-md; every GitHub wiki is a git repository at
+  `https://github.com/OWNER/REPO.wiki.git` that can simply be cloned.
 
 ## git-annex / DataLad Integration
 
 **Integration level: git-only.**
 
-Wiki and markdown content is small text that belongs in git proper, not in
-git-annex.  The content is inherently diffable and benefits from line-level
-version tracking.
-
-To archive wikis into a DataLad dataset:
+The markdown files are small text that belongs in git proper, not in
+git-annex.  gh-md writes them under `~/.gh-md/` by default, so point
+`GH_MD_ROOT` at a DataLad dataset to keep them there:
 
 ```bash
-# Create a dataset for documentation archives
-datalad create docs-archive
-cd docs-archive
+datalad create forge-archive
+cd forge-archive
 
-# Clone the wiki as a subdirectory
-git clone https://github.com/ORG/REPO.wiki.git wikis/REPO/
-
-# Or use gh-md
-gh-md backup --repo owner/repo --output ./wikis/REPO/
-
-# Save with DataLad
-datalad save -m "Archive wiki for ORG/REPO" wikis/REPO/
-```
-
-For periodic updates:
-
-```bash
-datalad run -m "Update wiki archive for ORG/REPO" \
-    --output "wikis/REPO/" \
-    "cd wikis/REPO && git pull origin master"
+GH_MD_ROOT=$PWD datalad run -m "Sync issues, PRs, and discussions for owner/repo" \
+    gh md pull owner/repo
 ```
 
 ## AI Readiness
@@ -108,11 +84,11 @@ Markdown is one of the most AI-friendly formats:
   No parsing, conversion, or preprocessing is needed.
 - **Rich structure** -- headings, lists, code blocks, and links provide
   semantic structure that helps LLMs understand document organization.
-- **Knowledge extraction** -- wiki pages often contain institutional knowledge
-  (setup guides, architecture decisions, troubleshooting tips) that is
-  extremely valuable for AI-assisted project understanding.
+- **Knowledge extraction** -- issue threads and discussions contain design
+  rationale and troubleshooting history that is valuable for AI-assisted
+  project understanding.
 - **Search and retrieval** -- plain text markdown integrates easily with
   vector databases and RAG (retrieval-augmented generation) pipelines.
 
-Archived wikis are ideal candidates for building project-specific knowledge
+The synced files are ideal input for project-specific knowledge
 bases that AI assistants can reference during development.

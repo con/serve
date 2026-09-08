@@ -111,15 +111,17 @@ rclone check ./local-copy/ gdrive:shared-project/
 rclone about gdrive:
 ```
 
-## git-annex Integration
+## git-annex / DataLad Integration
 
-rclone's most important role in the con/serve stack is as a **git-annex special remote** via [git-annex-remote-rclone](https://github.com/DanielDent/git-annex-remote-rclone). This lets git-annex use any rclone-supported provider as a storage backend.
+**Integration level: git-annex.**
+
+rclone's most important role in the con/serve stack is as a **git-annex special remote**. Two implementations exist: the long-standing [git-annex-remote-rclone](https://github.com/DanielDent/git-annex-remote-rclone) wrapper script, and, since rclone 1.67, a built-in `rclone gitannex` mode (`externaltype=rclone-builtin`) that needs no extra script. Either lets git-annex use any rclone-supported provider as a storage backend.
 
 ### Setup
 
 ```bash
 # Install the bridge
-pip install git-annex-remote-rclone
+# The wrapper is a shell script: put it on your PATH
 
 # Or from source
 git clone https://github.com/DanielDent/git-annex-remote-rclone.git
@@ -156,9 +158,6 @@ rclone copy gdrive:lab-data/experiment-2026/ ./staging/
 cd my-dataset
 git annex add ../staging/*
 datalad save -m "Import experiment data from Google Drive"
-
-# Or use git annex import directly
-git annex import gdrive:lab-data/experiment-2026/ --to main
 ```
 
 ### Distribution Workflow
@@ -243,7 +242,7 @@ This produces JSON that can be processed by LLMs to understand directory structu
 | Bandwidth control | Built-in (`--bwlimit`) | Varies |
 | Encryption | Client-side (`crypt` remote) | Provider-dependent |
 
-## Limitations and Caveats
+## Limitations
 
 - **Authentication complexity**: Each provider has its own auth flow (OAuth2, API keys, service accounts). Initial setup requires navigating provider-specific credential management.
 - **Rate limits**: Cloud providers impose API rate limits. Large sync operations may need `--tpslimit` and `--transfers` flags tuned per provider.

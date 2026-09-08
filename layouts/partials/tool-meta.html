@@ -5,6 +5,7 @@
     {{ with $.Params.homepage }}{{ if ne . $.Params.repo }}<div><strong>Homepage:</strong> <a href="{{ . }}" target="_blank" rel="noopener">{{ . }}</a></div>{{ end }}{{ end }}
     {{ with $.Params.issues }}<div><strong>Issues:</strong> <a href="{{ . }}" target="_blank" rel="noopener">{{ . }}</a></div>{{ end }}
     {{ with $.Params.docs }}<div><strong>Docs:</strong> <a href="{{ . }}" target="_blank" rel="noopener">{{ . }}</a></div>{{ end }}
+    {{ with $.Params.pypi }}<div><strong>PyPI:</strong> <a href="{{ . }}" target="_blank" rel="noopener">{{ . }}</a></div>{{ end }}
     {{ with $.Params.discussions }}<div><strong>Discussions:</strong> <a href="{{ . }}" target="_blank" rel="noopener">{{ . }}</a></div>{{ end }}
     {{ with $.Params.language }}<div><strong>Language:</strong> {{ . }}</div>{{ end }}
     {{ with $.Params.license }}<div><strong>License:</strong> {{ . }}</div>{{ end }}

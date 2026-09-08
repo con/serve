@@ -10,10 +10,10 @@ integrations: ["git-only"]
 ai_readiness: ["ai-ready"]
 params:
   repo: "https://github.com/anthropics/claude-code"
-  homepage: "https://docs.anthropic.com/en/docs/claude-code"
+  homepage: "https://code.claude.com/docs/en/hooks"
   issues: "https://github.com/anthropics/claude-code/issues"
-  language: "TypeScript"
-  license: "proprietary"
+  language: "n/a (closed-source CLI)"
+  license: "LicenseRef-Anthropic-Commercial-Terms"
   maturity: "stable"
   last_verified: "2026-02"
 ---
@@ -29,162 +29,108 @@ when a session ends, when context is compacted, or when the user stops the assis
 
 ## Available Hooks
 
-Claude Code exposes several lifecycle events that can trigger hooks:
+Claude Code exposes dozens of lifecycle events that can trigger hooks
+(session start and end, prompt submission, before and after tool use,
+context compaction, and more).
+Three matter most for archival:
 
 ### PreCompact
 
-Fires **before** Claude Code compacts its conversation context.
-Context compaction discards older turns to stay within the context window,
+Fires **before** Claude Code compacts its conversation context
+(matcher `manual` or `auto`).
+Context compaction summarizes older turns to stay within the context window,
 so this hook is the last opportunity to capture the full conversation
-before parts of it are summarized or dropped.
-
-This is the most important hook for archival:
-it fires when the context is about to lose detail,
-which is exactly when you want to save a snapshot.
+before parts of it are condensed.
 
 ### Stop
 
-Fires when the user explicitly stops Claude Code
-(e.g., pressing Escape during generation or using `/stop`).
-Useful for capturing partial sessions that ended prematurely.
+Fires each time Claude finishes responding, once per turn.
+Useful for incremental capture during long sessions.
 
 ### SessionEnd
 
-Fires when a Claude Code session terminates normally.
-This includes both explicit exits (`/exit`, closing the terminal)
-and idle timeouts.
+Fires when a Claude Code session terminates
+(the reasons passed to the hook include `clear`, `resume`, `logout`,
+and `prompt_input_exit`).
 
 ## Hook Configuration
 
-Hooks are configured in Claude Code's settings file
-(`.claude/settings.json` at the project level
-or `~/.claude/settings.json` globally).
-
-The configuration specifies which command to run for each hook event:
-
-```json
-{
-  "hooks": {
-    "PreCompact": [
-      {
-        "command": "bash /path/to/archive-session.sh $SESSION_ID",
-        "timeout": 30
-      }
-    ],
-    "Stop": [
-      {
-        "command": "bash /path/to/archive-session.sh $SESSION_ID"
-      }
-    ]
-  }
-}
-```
-
-Each hook entry specifies:
-
-- **command** -- The shell command to execute.
-  Environment variables like `$SESSION_ID` and `$PROJECT_PATH`
-  are available for context.
-- **timeout** -- Maximum seconds to wait for the command to complete.
-  Hooks that exceed the timeout are terminated.
-
-Multiple commands can be registered for the same event;
-they execute sequentially in the order listed.
-
-## Example: Archival with cctrace
-
-The following setup uses [cctrace](../cctrace/) to export each session
-when context is compacted or the session ends:
+Hooks are configured in Claude Code's settings files
+(`.claude/settings.json` at the project level,
+`~/.claude/settings.json` globally, or `.claude/settings.local.json`).
+Each event maps to a list of matcher groups, each holding a list of handlers:
 
 ```json
 {
   "hooks": {
     "PreCompact": [
       {
-        "command": "cctrace export $SESSION_ID >> .ai-sessions/transcripts.jsonl && git add .ai-sessions/ && git commit -m 'Archive AI session (pre-compact)'",
-        "timeout": 60
+        "matcher": "",
+        "hooks": [
+          { "type": "command", "command": "bash .claude/hooks/archive-session.sh", "timeout": 30 }
+        ]
       }
     ],
     "SessionEnd": [
       {
-        "command": "cctrace export $SESSION_ID >> .ai-sessions/transcripts.jsonl && git add .ai-sessions/ && git commit -m 'Archive AI session (end)'",
-        "timeout": 60
+        "matcher": "",
+        "hooks": [
+          { "type": "command", "command": "bash .claude/hooks/archive-session.sh" }
+        ]
       }
     ]
   }
 }
 ```
 
-## Example: Archival with Entire.io
-
-For projects using [Entire.io](../entire-io/)'s shadow branch approach:
-
-```json
-{
-  "hooks": {
-    "PreCompact": [
-      {
-        "command": "entire capture claude --session $SESSION_ID",
-        "timeout": 120
-      }
-    ],
-    "SessionEnd": [
-      {
-        "command": "entire capture claude --session $SESSION_ID",
-        "timeout": 120
-      }
-    ]
-  }
-}
-```
+A command hook receives a JSON object on standard input with, among other
+fields, `session_id`, `transcript_path` (the JSONL file for the session),
+`cwd`, and `hook_event_name`.
+`CLAUDE_PROJECT_DIR` is exported in the environment.
+`timeout` caps the run time in seconds (default 600 for command hooks);
+`async: true` lets a hook run without blocking the session.
+All matching hooks for an event run in parallel.
 
 ## Example: Minimal Archival Script
 
-For projects that want archival without additional tool dependencies,
-a simple shell script can copy the raw JSONL session file into the repository:
+A small script can copy the raw JSONL transcript into the repository
+without any additional tool:
 
 ```bash
 #!/bin/bash
-# archive-session.sh -- copy raw Claude Code session data to git
+# .claude/hooks/archive-session.sh -- copy the raw Claude Code transcript into git
 set -eu
 
-SESSION_ID="${1:?Usage: archive-session.sh SESSION_ID}"
-PROJECT_DIR="$(git rev-parse --show-toplevel)"
-ARCHIVE_DIR="$PROJECT_DIR/.ai-sessions"
-SOURCE="$HOME/.claude/projects/$(basename "$PROJECT_DIR")/$SESSION_ID"
+input=$(cat)
+session_id=$(printf '%s' "$input" | jq -r .session_id)
+transcript=$(printf '%s' "$input" | jq -r .transcript_path)
 
-mkdir -p "$ARCHIVE_DIR"
+archive_dir="$CLAUDE_PROJECT_DIR/.ai-sessions"
+mkdir -p "$archive_dir"
 
-if [ -f "$SOURCE" ]; then
-    cp "$SOURCE" "$ARCHIVE_DIR/${SESSION_ID}.jsonl"
-    cd "$PROJECT_DIR"
-    git add "$ARCHIVE_DIR/${SESSION_ID}.jsonl"
-    git commit -m "Archive Claude Code session $SESSION_ID"
+if [ -f "$transcript" ]; then
+    cp "$transcript" "$archive_dir/${session_id}.jsonl"
+    cd "$CLAUDE_PROJECT_DIR"
+    git add "$archive_dir/${session_id}.jsonl"
+    git commit -q -m "Archive Claude Code session $session_id"
 fi
 ```
 
-Register it as a hook:
+The same shape works for the export tools in this section: pass
+`session_id` to [ccexport]({{< ref "ccexport" >}}) (`--session`) or
+[cctrace]({{< ref "cctrace" >}}) (`--session-id`) instead of copying the file.
+[Entire.io]({{< ref "entire-io" >}}) installs its own hooks when enabled
+for a repository and does not need a hand-written one.
 
-```json
-{
-  "hooks": {
-    "SessionEnd": [
-      {
-        "command": "bash .claude/hooks/archive-session.sh $SESSION_ID",
-        "timeout": 30
-      }
-    ]
-  }
-}
-```
+## git-annex / DataLad Integration
 
-## Integration with DataLad
+**Integration level: git-only.**
 
 For DataLad datasets, hook scripts can use `datalad save` instead of `git commit`
 to ensure proper dataset metadata:
 
 ```bash
-datalad save -m "Archive AI session $SESSION_ID" .ai-sessions/
+datalad save -m "Archive AI session $session_id" .ai-sessions/
 ```
 
 This records the session archival as a DataLad operation,
@@ -196,11 +142,11 @@ complete with run provenance if wrapped in `datalad run`.
   SessionEnd may not fire if the terminal is killed or the system crashes.
   PreCompact fires during normal operation and captures the fullest context.
 
-- **Keep hook commands fast.**
-  Hooks block the Claude Code session while executing.
+- **Keep hook commands fast, or mark them async.**
+  Synchronous hooks block the Claude Code session while executing.
   If archival is slow (e.g., pushing to a remote),
-  have the hook write locally and defer the push to a background job
-  or a separate cron task.
+  have the hook write locally and defer the push to a background job,
+  or set `async: true`.
 
 - **Test hooks before relying on them.**
   Run the archival command manually with a known session ID
@@ -213,19 +159,25 @@ complete with run provenance if wrapped in `datalad run`.
 
 ## Limitations
 
-- **Proprietary** -- Claude Code and its hooks system are proprietary to Anthropic.
-  The hooks API may change between releases.
+- **Proprietary** -- Claude Code is closed-source and its hooks system is
+  defined by Anthropic. The hooks API may change between releases.
 - **Claude Code only** -- These hooks are specific to Claude Code;
   other AI tools (Cursor, Copilot) have their own extension mechanisms.
 - **No built-in export** -- The hooks provide *triggers* but not *export logic*.
   You need a companion tool (cctrace, ccexport, Entire.io, or a custom script)
   to actually extract and format the session data.
-- **Environment variables** -- The exact set of environment variables
-  available to hook commands may vary by Claude Code version.
-  Consult the current documentation for the definitive list.
+- **Input format** -- The fields passed on standard input may change
+  between Claude Code versions.
+  Consult the [hooks reference](https://code.claude.com/docs/en/hooks) for the definitive list.
+
+## AI Readiness
+
+**Level: ai-ready.**
+
+Hooks produce no output of their own; what gets archived is whatever the companion tool writes -- raw JSONL transcripts, or the markdown/JSON produced by cctrace or ccexport. All of these are structured text that an LLM can consume without preprocessing.
 
 ## See Also
 
-- [cctrace](../cctrace/) -- Pair with hooks for automatic Claude Code transcript export
-- [ccexport](../ccexport/) -- Alternative export tool for use in hook scripts
-- [Entire.io](../entire-io/) -- Shadow branch archival, triggerable via hooks
+- [cctrace]({{< ref "cctrace" >}}) -- Pair with hooks for automatic Claude Code transcript export
+- [ccexport]({{< ref "ccexport" >}}) -- Alternative export tool for use in hook scripts
+- [Entire.io]({{< ref "entire-io" >}}) -- Checkpoint-ref archival that installs its own hooks
