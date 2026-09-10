@@ -104,6 +104,41 @@ its lines are unioned and the newest timestamp per key and repository wins.
 This gives "most recent availability information"
 without any coordination between clones.
 
+Because the branch is unconnected to any content branch,
+that merge is not limited to clones of the same repository.
+Two repositories that share no commit history at all
+can still exchange availability information:
+add one as a remote of the other, fetch, and the branches merge.
+Keys are content-addressed,
+so any file that both repositories annexed with the same backend
+has the same key on both sides,
+and the merged location logs make the copy that already exists elsewhere
+fetchable without re-uploading it.
+What travels along is not only per-key location:
+registered URLs (`<key>.log.web`) and
+special remote configuration (`remote.log`, which `git annex enableremote` reads)
+merge too, so the other repository's storage becomes usable, not just known about.
+
+A concrete case for this site:
+the banners and other media of the current
+[con.org](https://centerforopenneuroscience.org) website
+are annexed in its repository and published on
+[datasets.datalad.org](https://datasets.datalad.org/?dir=/centerforopenneuroscience/con.org).
+Adding `https://datasets.datalad.org/centerforopenneuroscience/con.org/.git`
+as a remote of a repository that reuses any of them
+would let git-annex fetch those keys from where they already sit,
+instead of requiring a fresh upload of the same content to a new location;
+only genuinely new content would then need somewhere to be hosted.
+The same holds for any pair of repositories in a vault
+that happen to have annexed the same artifact --
+a shared dataset, a shared figure, a shared release tarball --
+which is an argument for keeping backends consistent across them
+(a file annexed as `MD5E` in one repository and `SHA256E` in another
+yields two unrelated keys and no reuse).
+The costs are that the merge imports the other repository's
+entire location history, and that availability is a *claim* about a remote:
+the remote still has to be reachable, and trusted enough to be believed.
+
 History can be pruned:
 `git annex forget` rewrites the branch to drop old location history
 and records the fact in `transitions.log`,
@@ -294,6 +329,18 @@ The question is which information should go where.
   per-commit provenance (notes, trailers), session transcripts (Entire, git-memento),
   mirrored external state that has its own lifecycle (git-bug),
   and caches of extracted metadata that are recomputable (metalad).
+
+A side channel that merges across repositories, as git-annex's does,
+adds a second reason beyond keeping histories apart:
+artifacts that already exist somewhere do not need a new home.
+The vault does not have to be one repository,
+nor does content have to be re-uploaded into it,
+for its keys to be fetchable --
+an existing repository can be added as a remote solely
+to merge its availability information.
+That works best when the repositories involved
+share a key backend and their annexed content remains reachable,
+neither of which is guaranteed for repositories one does not control.
 
 Where a self-contained per-entity subdataset
 (see [Vault Organization]({{< ref "vault-organization#emerging-principles" >}}))
