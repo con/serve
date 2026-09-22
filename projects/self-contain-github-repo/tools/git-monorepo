@@ -1,0 +1,178 @@
+#!/usr/bin/env python3
+"""git-monorepo -- keep a collection of repositories inside ONE git repository.
+
+Each member repository lives in a git *namespace*: its refs are stored under
+refs/namespaces/<a>/refs/namespaces/<b>/... in the single shared object store.
+
+Two access modes, same on-disk ref layout:
+
+  refspec   (default) -- works on ANY forge, GitHub included. The client
+            addresses the member repo with fully-qualified refspecs. The forge
+            needs no namespace support at all; it just has to accept refs
+            outside refs/heads/ and refs/tags/.
+
+  namespace -- for a forge that runs git-http-backend/gitolite with
+            GIT_NAMESPACE (see ns-http-server.py). The member repo is a normal
+            URL and every git command Just Works.
+
+Why: a plain `git clone` of the repo fetches refs/heads/* only, so the
+artifacts (CI logs, issues, ...) cost nothing until asked for -- while still
+living in the same repo, sharing its object store and its access control.
+"""
+from __future__ import annotations
+
+import argparse
+import subprocess
+import sys
+
+NS = "refs/namespaces"
+
+
+def ns_prefix(namespace: str) -> str:
+    """'a/b/c' -> 'refs/namespaces/a/refs/namespaces/b/refs/namespaces/c'"""
+    parts = [p for p in namespace.strip("/").split("/") if p]
+    if not parts:
+        return ""
+    return "/".join(f"{NS}/{p}" for p in parts)
+
+
+def git(*args, cwd=None, capture=True, check=True):
+    p = subprocess.run(["git", *args], cwd=cwd, check=False,
+                       capture_output=capture, text=True)
+    if check and p.returncode:
+        sys.exit(f"git {' '.join(args)}\n{(p.stderr or '').strip()}")
+    return (p.stdout or "").strip()
+
+
+def ns_url(url: str, namespace: str) -> str:
+    """URL that a namespace-aware server exposes for this member."""
+    base, _, repo = url.rstrip("/").rpartition("/")
+    return f"{base}/~{namespace}/{repo}"
+
+
+# ---------------------------------------------------------------- commands
+
+def cmd_ls(a):
+    """List the member repositories present in the shared repo."""
+    out = git("ls-remote", a.url)
+    members: dict[str, dict[str, str]] = {}
+    for line in out.splitlines():
+        sha, _, ref = line.partition("\t")
+        if not ref.startswith(NS + "/"):
+            members.setdefault("(default)", {})[ref] = sha
+            continue
+        # strip the interleaved refs/namespaces/ components back into a path
+        parts, rest = [], ref
+        while rest.startswith(NS + "/"):
+            rest = rest[len(NS) + 1:]
+            head, _, rest = rest.partition("/")
+            parts.append(head)
+        members.setdefault("/".join(parts), {})[rest] = sha
+    for name in sorted(members):
+        refs = members[name]
+        head = refs.get("HEAD", "")
+        branches = sorted(r for r in refs if r.startswith("refs/heads/"))
+        annex = " [git-annex]" if "refs/heads/git-annex" in refs else ""
+        print(f"{name:<28} {head[:8] or '--------':<9}"
+              f" {len(branches)} branch(es){annex}")
+
+
+def cmd_clone(a):
+    """Fetch exactly one member repository into a normal working clone."""
+    prefix = ns_prefix(a.namespace)
+    dest = a.directory
+    git("init", "-q", "-b", a.branch, dest)
+    if a.mode == "namespace":
+        url = ns_url(a.url, a.namespace)
+        git("remote", "add", "origin", url, cwd=dest)
+        git("fetch", "-q", "origin", cwd=dest)
+    else:
+        git("remote", "add", "origin", a.url, cwd=dest)
+        # only this member's refs enter the clone
+        git("config", "remote.origin.fetch",
+            f"+{prefix}/refs/heads/*:refs/remotes/origin/*", cwd=dest)
+        git("fetch", "-q", "origin", cwd=dest)
+        # so that later `git push` lands back in the namespace
+        git("config", "remote.origin.push",
+            f"refs/heads/*:{prefix}/refs/heads/*", cwd=dest)
+    git("checkout", "-q", "-B", a.branch, f"origin/{a.branch}", cwd=dest)
+    git("config", f"branch.{a.branch}.remote", "origin", cwd=dest)
+    git("config", f"branch.{a.branch}.merge", f"refs/heads/{a.branch}", cwd=dest)
+    if git("for-each-ref", "--format=%(refname)", "refs/remotes/origin/git-annex",
+           cwd=dest):
+        print(f"note: {a.namespace} carries a git-annex branch; "
+              f"run `git annex init` in {dest}")
+    print(f"cloned {a.namespace} -> {dest} (mode={a.mode})")
+
+
+def cmd_push(a):
+    """Publish the repo in <directory> as member <namespace>."""
+    prefix = ns_prefix(a.namespace)
+    src = a.directory
+    refs = a.refs or ["HEAD"]
+    if a.mode == "namespace":
+        url = ns_url(a.url, a.namespace)
+        specs = [f"{r}:refs/heads/{a.branch}" if r == "HEAD" else f"{r}:refs/heads/{r}"
+                 for r in refs]
+    else:
+        url = a.url
+        specs = [f"{r}:{prefix}/refs/heads/{a.branch}" if r == "HEAD"
+                 else f"{r}:{prefix}/refs/heads/{r}" for r in refs]
+    git("push", url, *specs, cwd=src, capture=False)
+    print(f"pushed {src} -> {a.namespace}")
+    if a.mode != "namespace":
+        print(f"  HEAD symref for this namespace must be set server-side:\n"
+              f"    git symbolic-ref {prefix}/HEAD {prefix}/refs/heads/{a.branch}\n"
+              f"  (not needed in refspec mode; required for namespace-mode clones)")
+
+
+def cmd_attach(a):
+    """Register a member as a submodule of the current repo, relative URL."""
+    prefix = ns_prefix(a.namespace)
+    sha = a.commit or git("ls-remote", a.url,
+                          f"{prefix}/refs/heads/{a.branch}").split("\t")[0]
+    if not sha:
+        sys.exit(f"no ref {prefix}/refs/heads/{a.branch} in {a.url}")
+    # relative URL keeps the whole hierarchy relocatable between forges
+    depth = a.path.count("/") + 1
+    rel = "../" * depth + f"~{a.namespace}/" + a.url.rstrip("/").rpartition("/")[2]
+    with open(".gitmodules", "a") as fh:
+        fh.write(f'[submodule "{a.path}"]\n\tpath = {a.path}\n'
+                 f"\turl = {rel}\n\tbranch = {a.branch}\n")
+    git("update-index", "--add", f"--cacheinfo", f"160000,{sha},{a.path}")
+    git("add", ".gitmodules")
+    print(f"attached {a.namespace} at {a.path} ({sha[:8]}), url={rel}")
+
+
+def main():
+    p = argparse.ArgumentParser(prog="git-monorepo", description=__doc__,
+                                formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("--mode", choices=["refspec", "namespace"], default="refspec",
+                   help="refspec: any forge incl. GitHub (default); "
+                        "namespace: server honours GIT_NAMESPACE")
+    p.add_argument("--branch", default="main")
+    sub = p.add_subparsers(dest="cmd", required=True)
+
+    s = sub.add_parser("ls", help="list member repositories")
+    s.add_argument("url"); s.set_defaults(fn=cmd_ls)
+
+    s = sub.add_parser("clone", help="clone one member")
+    s.add_argument("url"); s.add_argument("namespace"); s.add_argument("directory")
+    s.set_defaults(fn=cmd_clone)
+
+    s = sub.add_parser("push", help="publish a repo as a member")
+    s.add_argument("url"); s.add_argument("namespace")
+    s.add_argument("directory", nargs="?", default=".")
+    s.add_argument("refs", nargs="*")
+    s.set_defaults(fn=cmd_push)
+
+    s = sub.add_parser("attach", help="add a member as a submodule here")
+    s.add_argument("url"); s.add_argument("namespace"); s.add_argument("path")
+    s.add_argument("--commit"); s.set_defaults(fn=cmd_attach)
+
+    a = p.parse_args()
+    a.fn(a)
+
+
+if __name__ == "__main__":
+    main()
