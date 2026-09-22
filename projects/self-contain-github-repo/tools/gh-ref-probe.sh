@@ -11,12 +11,28 @@
 set -uo pipefail
 URL=${1:?usage: gh-ref-probe.sh <repo-url>}
 W=$(mktemp -d); trap 'rm -rf "$W"' EXIT
-export GIT_CONFIG_GLOBAL=$W/cfg
-printf '[user]\n\tname=probe\n\temail=probe@example.com\n[commit]\n\tgpgsign=false\n[push]\n\tnegotiate=false\n' > "$GIT_CONFIG_GLOBAL"
 
+# NB: do NOT set GIT_CONFIG_GLOBAL here. Credential helpers, proxy settings
+# and http.* auth live in the global config; replacing it makes every push
+# fail with an indistinguishable 403 and the probe reports false negatives.
+# Keep the ambient config and override only what matters, per invocation.
 git init -q -b main "$W/r"; cd "$W/r"
+git config user.name probe; git config user.email probe@example.com
+git config commit.gpgsign false; git config push.negotiate false
 echo probe > probe.txt; git add probe.txt; git commit -qm "ref-policy probe"
 SHA=$(git rev-parse HEAD)
+
+# Control: an ordinary branch and an ordinary tag. Every forge accepts both.
+# If either fails, the failure is environmental (credentials, a push proxy,
+# branch protection) and the results below say nothing about ref policy.
+echo "== controls =="
+for c in "refs/heads/zz-probe-control" "refs/tags/zz-probe-control"; do
+  if git push "$URL" "$SHA:$c" >/dev/null 2>&1; then
+    echo "  ok       $c"; git push -q "$URL" ":$c" 2>/dev/null
+  else
+    echo "  FAILED   $c  <- environment problem, not ref policy; results below are void"
+  fi
+done
 
 REFS=(
   "refs/namespaces/probe/refs/heads/main"                            # flat namespace

@@ -26,6 +26,12 @@ namespace layout, access by refspec today, and the same repository becomes a
 set of real namespaced repositories the moment it is served by
 `git-http-backend` or gitolite.** No conversion step.
 
+If a forge turns out to reject custom refs outright, the fallback is to put
+each member on an ordinary `refs/heads/` branch. That is **verified working on
+GitHub today**, at the price of the cheap-clone property and of some
+sharp edges (directory/file ref conflicts, git-annex branch collisions) that
+the namespace layout does not have.
+
 ## How namespaces actually behave
 
 Verified locally against git 2.43 (`tools/build-demo.sh`):
@@ -136,32 +142,77 @@ Helper tooling for the "many repos in one" case: none found.
 | Forge | `GIT_NAMESPACE` | Refs outside `refs/heads`/`refs/tags` |
 | --- | --- | --- |
 | stock git (`git-http-backend`, gitolite, ssh) | yes, documented | yes |
-| GitHub | no client-selectable namespace | **untested here** -- see below |
+| GitHub | no client-selectable namespace | **still untested** -- see below. The branch-prefix fallback is verified working |
 | GitLab | ignored; pushes land in the default namespace. Gitaly rejects pushes into *its* internal namespaces | partial |
 | Forgejo/Gitea | not supported; no UI, API or ACL concept | unverified |
 
-### The GitHub question is still open
+### Tested on GitHub: the branch-prefix fallback
 
-The decisive experiment -- does GitHub accept a push to
-`refs/namespaces/.../refs/heads/main`? -- **could not be run in this
-session**: the Claude GitHub App has read-only access to
-`con/serve-monorepo-dev` (`403 Resource not accessible by integration`), and
-pushing probe refs to `con/serve` was blocked as a shared-resource write.
+`tools/gh-branch-layout-demo.sh` built the same 3-deep hierarchy on the real
+`con/serve-monorepo-dev`, using **only** `refs/heads/*` -- the layout to fall
+back on if a forge will not take custom refs. Members live on `m/**` branches
+and every submodule URL is the relative `../serve-monorepo-dev`, i.e. the
+repository points at itself.
+
+It works, end to end:
+
+- `git clone -b <branch>` then `git submodule update --init --recursive`
+  walks all three levels, each cloned from the same GitHub URL
+- the git-annex leaf resolves and `git annex get` pulls content from the
+  public URLs recorded at ingest
+- relative submodule URLs mean the whole thing relocates by moving the repo
+
+Two costs are now measured rather than assumed, and both are arguments for
+the namespace layout:
+
+- **Members are ordinary branches**, so they are advertised to every clone,
+  every `git branch -a`, and every branch dropdown. The cheap-clone property
+  is gone; `--single-branch` recovers it for the top level only.
+- **Directory/file conflict.** `refs/heads/m/tinuous` cannot coexist with
+  `refs/heads/m/tinuous/2026/...`; GitHub rejects the push with
+  `cannot lock ref ...: 'refs/heads/m/tinuous/2026/09/git-annex' exists`.
+  So a member can never sit at a prefix of another member's path, and every
+  member needs a trailing component (`m/tinuous/main`). The namespace layout
+  interleaves `refs/namespaces/` between components and is structurally
+  immune to this.
+- **git-annex branch collision.** Every git-annex repository insists on
+  `refs/heads/git-annex`. With one branch namespace, all members collide on
+  it, so each needs a renamed branch plus a fetch refspec mapping it back in
+  *every* clone:
+
+  ```
+  fetch = +refs/heads/m/tinuous/2026/09/git-annex:refs/heads/git-annex
+  ```
+
+  Under namespaces each member gets its own `refs/heads/git-annex` for free.
+  This is the single strongest argument for the namespace layout.
+
+### The custom-ref question on GitHub remains open
+
+Still unanswered, and for an environmental reason rather than a GitHub one.
+In the session where this was written the git proxy permitted pushes only to
+`refs/heads/*`: an ordinary branch succeeded, while an ordinary **tag**
+(`refs/tags/zz-probe-tag`) and every custom ref returned an identical
+`HTTP 403`, and the REST refs API answered *"Write access to this GitHub API
+path is not permitted through this proxy."* Since GitHub unquestionably
+accepts tags, that 403 is the proxy, not GitHub, and it makes the probe
+uninformative in that environment.
+
+`tools/gh-ref-probe.sh` now pushes an ordinary branch **and an ordinary tag
+as controls first**, and declares its results void if either fails -- exactly
+the false negative that bit this investigation.
 
 Evidence short of a test: GitHub is a compliant git implementation and
 [community discussion #30507](https://github.com/orgs/community/discussions/30507)
-states that custom refs can be pushed and pulled, though they are invisible in
-the web UI and reachable only via the REST refs API. The known rejections are
+states custom refs can be pushed and pulled, though they are invisible in the
+web UI and reachable only through the REST refs API. The known rejections are
 GitHub's *own* hidden refs (`refs/pull/*`). So the expectation is that it
-works, with these risks to confirm:
+works, with these risks left to confirm from an unproxied clone:
 
 - whether `refs/namespaces/*` specifically is rejected as reserved
-- whether such refs survive GitHub's garbage collection and repo maintenance
-- whether they survive fork/transfer/mirror operations
+- whether such refs survive GitHub's GC and repository maintenance
+- whether they survive fork, transfer and mirror operations
 - whether repository size limits count them (they will)
-
-`tools/gh-ref-probe.sh <repo-url>` answers all of the first three in under a
-minute and cleans up after itself. **Run it before building on this.**
 
 ## Tools
 
@@ -170,7 +221,8 @@ minute and cleans up after itself. **Run it before building on this.**
 | `tools/git-monorepo` | list / clone / push / attach members of a single-repo collection, in either mode |
 | `tools/ns-http-server.py` | namespace-aware smart-HTTP server (`/~<ns>/<repo>.git`) over `git-http-backend` |
 | `tools/build-demo.sh` | builds the verified 3-deep + git-annex demo from scratch |
-| `tools/gh-ref-probe.sh` | probes a forge's ref-name policy, non-destructively |
+| `tools/gh-ref-probe.sh` | probes a forge's ref-name policy, non-destructively, with controls |
+| `tools/gh-branch-layout-demo.sh` | builds the branch-prefix fallback on a real GitHub repo |
 
 Quickstart:
 
@@ -183,7 +235,9 @@ tools/git-monorepo clone http://127.0.0.1:8178/monorepo.git a/tinuous/2026/09 /t
 
 ## Remaining unknowns
 
-- GitHub's ref policy and GC behaviour (above) -- blocking.
+- GitHub's custom-ref policy and GC behaviour (above) -- blocking for the
+  namespace layout. The branch-prefix fallback works today and is the
+  answer if custom refs turn out to be rejected.
 - Per-member access control: namespaces share one repository, so they share
   its ACL. Splitting "code is public, CI logs are internal" needs separate
   repositories or a gateway that filters refs.
