@@ -36,16 +36,28 @@ the namespace layout does not have.
 
 Verified locally against git 2.43 (`tools/build-demo.sh`):
 
-| Behaviour | Result |
-| --- | --- |
-| `GIT_NAMESPACE=x git ls-remote URL` | shows only that namespace's refs, rewritten to `refs/heads/*` |
-| plain `git clone URL` | fetches `refs/heads/*` only -- namespaced refs are **not** pulled |
-| `git clone` of a local *path* | namespace ignored -- local clones bypass `upload-pack`; use `file://` |
-| namespace `HEAD` | **required**, and must be a *fully-qualified* symref: `refs/namespaces/x/HEAD -> refs/namespaces/x/refs/heads/main`. Pointing it at `refs/heads/main` silently serves the top-level branch |
-| hierarchy | `GIT_NAMESPACE=a/b/c` interleaves: `refs/namespaces/a/refs/namespaces/b/refs/namespaces/c/` |
-| object store | shared. Pushing identical content into a second namespace added **0** objects |
-| `git gc` | sees all namespaces as reachable; nothing pruned |
-| persisting a namespace client-side | `remote.origin.uploadpack = "env GIT_NAMESPACE=x git-upload-pack"` (and `receivepack`) works for `ssh://` and `file://`, **not** for http -- there the server decides |
+| Behaviour                          | Result                                                    |
+| ---------------------------------- | --------------------------------------------------------- |
+| `GIT_NAMESPACE=x git ls-remote`    | only that namespace's refs, rewritten to `refs/heads/*`   |
+| plain `git clone URL`              | `refs/heads/*` only; namespaced refs **not** pulled       |
+| `git clone` of a local *path*      | namespace ignored; use `file://` (see note 1)             |
+| namespace `HEAD`                   | **required**, and must be fully qualified (note 2)        |
+| hierarchical `a/b/c`               | interleaves `refs/namespaces/` between components         |
+| object store                       | shared; a duplicate push added **0** objects              |
+| `git gc`                           | all namespaces reachable, nothing pruned                  |
+| persisting a namespace client-side | `uploadpack`/`receivepack` config, non-http only (note 3) |
+
+1. A local *path* clone copies objects and reads refs directly, bypassing
+   `upload-pack`, which is what interprets `GIT_NAMESPACE`. Use a `file://`
+   URL to force the real transport.
+2. `refs/namespaces/x/HEAD` must point at
+   `refs/namespaces/x/refs/heads/main`. Pointing it at `refs/heads/main`
+   silently serves the *top-level* branch instead -- the clone succeeds and
+   checks out the wrong tree.
+3. `remote.origin.uploadpack = "env GIT_NAMESPACE=x git-upload-pack"` (and
+   the matching `receivepack`) pins a namespace without any environment
+   variable, for `ssh://` and `file://`. Over http the server decides, so
+   this does not work there.
 
 The last row is the crux: over HTTP the namespace is a property of the URL the
 server maps, not something the client can assert.
@@ -139,12 +151,16 @@ Helper tooling for the "many repos in one" case: none found.
 
 ## Forge support
 
-| Forge | `GIT_NAMESPACE` | Refs outside `refs/heads`/`refs/tags` |
-| --- | --- | --- |
-| stock git (`git-http-backend`, gitolite, ssh) | yes, documented | yes |
-| GitHub | no client-selectable namespace | **still untested** -- see below. The branch-prefix fallback is verified working |
-| GitLab | ignored; pushes land in the default namespace. Gitaly rejects pushes into *its* internal namespaces | partial |
-| Forgejo/Gitea | not supported; no UI, API or ACL concept | unverified |
+| Forge                                         | `GIT_NAMESPACE`                            | Custom refs          |
+| --------------------------------------------- | ------------------------------------------ | -------------------- |
+| stock git (`git-http-backend`, gitolite, ssh) | yes, documented                            | yes                  |
+| GitHub                                        | not client-selectable                      | **untested** (below) |
+| GitLab                                        | ignored; folded into the default namespace | partial              |
+| Forgejo/Gitea                                 | unsupported; no UI, API or ACL concept     | unverified           |
+
+"Custom refs" means refs outside `refs/heads/` and `refs/tags/`. GitLab's
+Gitaly additionally rejects pushes into *its own* internal ref namespaces.
+On GitHub the branch-prefix fallback is verified working regardless.
 
 ### Tested on GitHub: the branch-prefix fallback
 
@@ -216,13 +232,13 @@ works, with these risks left to confirm from an unproxied clone:
 
 ## Tools
 
-| File | What it does |
-| --- | --- |
-| `tools/git-monorepo` | list / clone / push / attach members of a single-repo collection, in either mode |
-| `tools/ns-http-server.py` | namespace-aware smart-HTTP server (`/~<ns>/<repo>.git`) over `git-http-backend` |
-| `tools/build-demo.sh` | builds the verified 3-deep + git-annex demo from scratch |
-| `tools/gh-ref-probe.sh` | probes a forge's ref-name policy, non-destructively, with controls |
-| `tools/gh-branch-layout-demo.sh` | builds the branch-prefix fallback on a real GitHub repo |
+| File                             | What it does                                                                     |
+| -------------------------------- | -------------------------------------------------------------------------------- |
+| `tools/git-monorepo`             | list / clone / push / attach members of a single-repo collection, in either mode |
+| `tools/ns-http-server.py`        | namespace-aware smart-HTTP server (`/~<ns>/<repo>.git`) over `git-http-backend`  |
+| `tools/build-demo.sh`            | builds the verified 3-deep + git-annex demo from scratch                         |
+| `tools/gh-ref-probe.sh`          | probes a forge's ref-name policy, non-destructively, with controls               |
+| `tools/gh-branch-layout-demo.sh` | builds the branch-prefix fallback on a real GitHub repo                          |
 
 Quickstart:
 
