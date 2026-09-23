@@ -18,7 +18,8 @@ Git namespaces are the right *storage layout* and the wrong *access
 mechanism*. `GIT_NAMESPACE` is interpreted by `git-upload-pack` and
 `git-receive-pack` **on the server**; a client cannot select a namespace over
 `https://` unless the server offers it at a distinct URL. GitHub, GitLab and
-Forgejo/Gitea do not. But the layout that namespaces define --
+Forgejo/Gitea do not -- for Gitea/Forgejo this is now confirmed by both the
+source and a live instance. But the layout that namespaces define --
 `refs/namespaces/<a>/refs/namespaces/<b>/refs/heads/main` -- is just refs, and
 a client can address those refs directly with explicit refspecs on any forge
 that accepts refs outside `refs/heads/` and `refs/tags/`. So: **store in
@@ -151,16 +152,83 @@ Helper tooling for the "many repos in one" case: none found.
 
 ## Forge support
 
-| Forge                                         | `GIT_NAMESPACE`                            | Custom refs          |
-| --------------------------------------------- | ------------------------------------------ | -------------------- |
-| stock git (`git-http-backend`, gitolite, ssh) | yes, documented                            | yes                  |
-| GitHub                                        | not client-selectable                      | **untested** (below) |
-| GitLab                                        | ignored; folded into the default namespace | partial              |
-| Forgejo/Gitea                                 | unsupported; no UI, API or ACL concept     | unverified           |
+| Forge                                         | `GIT_NAMESPACE`                  | Custom refs           |
+| --------------------------------------------- | -------------------------------- | --------------------- |
+| stock git (`git-http-backend`, gitolite, ssh) | yes, documented                  | yes                   |
+| Gitea / Forgejo                               | **ignored** (tested)             | **accepted** (tested) |
+| GitHub                                        | not client-selectable            | untested              |
+| GitLab                                        | ignored; folded into the default | partial               |
 
-"Custom refs" means refs outside `refs/heads/` and `refs/tags/`. GitLab's
-Gitaly additionally rejects pushes into *its own* internal ref namespaces.
-On GitHub the branch-prefix fallback is verified working regardless.
+"Custom refs" means refs outside `refs/heads/` and `refs/tags/`. Gitaly
+additionally rejects pushes into GitLab's *own* internal ref namespaces. On
+GitHub the branch-prefix fallback is verified working regardless of how the
+custom-ref question resolves.
+
+### Gitea and Forgejo, read and then tested
+
+Source read against `go-gitea/gitea` at `191287d`, then **built from source
+(SQLite) and run**, and both questions probed against the live instance.
+Forgejo is a soft fork of Gitea and has not diverged in this code path;
+Codeberg and `forgejo.org` were unreachable from the environment this was
+written in, so Forgejo itself was not exercised -- treat its row as inherited
+from Gitea rather than independently confirmed. `tools/forgejo-probe.sh`
+repeats both probes against a real Forgejo-aneksajo container.
+
+**Namespaces: ignored.** `GIT_NAMESPACE` and `refs/namespaces` appear nowhere
+in the codebase -- not in the git wrapper, the HTTP routes, the config, or
+the templates; there is nothing to enable. Confirmed live: a push with
+`GIT_NAMESPACE=probe` landed at top level as `refs/heads/nsprobe`, and
+`ls-remote` under that namespace returned the plain view unchanged. So the
+long-standing claim that Forgejo "does not support namespaces" is right, and
+the reason is simply that the feature was never wired up.
+
+**Custom refs: accepted.** `routers/private/hook_pre_receive.go` dispatches
+each incoming ref by kind -- branch, tag, or `refs/for/` (agit) -- and
+everything else falls through to:
+
+```go
+default:
+        ourCtx.assertCanWriteRef(refFullName)
+```
+
+a plain write-permission check, so a pusher with write access to the code
+unit may create any ref name. The forge then ignores it:
+`hook_post_receive.go` gates indexing, notification and default-branch logic
+on `IsBranch()`/`IsTag()`, and `GC_ARGS` defaults to empty, so maintenance
+runs a plain `git gc`, which treats every ref as a root.
+
+Confirmed live, with an ordinary branch and tag as controls. All seven probe
+refs were accepted, advertised to `ls-remote`, absent from a plain clone, and
+deletable again:
+
+```
+ACCEPTED  refs/namespaces/probe/refs/heads/main
+ACCEPTED  refs/namespaces/a/refs/namespaces/b/refs/namespaces/c/refs/heads/main
+ACCEPTED  refs/namespaces/probe/HEAD
+ACCEPTED  refs/namespaces/probe/refs/heads/git-annex
+ACCEPTED  refs/bugs/probe
+ACCEPTED  refs/notes/probe
+ACCEPTED  refs/artifacts/probe/main
+```
+
+Then the whole design, in refspec mode against that instance: the four
+members pushed, `git-monorepo ls` listing them, a plain clone bringing back
+`README.md` and nothing else, and `git-monorepo clone` of the leaf followed
+by `git annex get` pulling content from the web remote. **So Forgejo is a
+working target for this design today** -- no namespace support needed, and no
+open question of the kind GitHub still has.
+
+One cosmetic gap: refspec-mode pushes cannot set a member's `HEAD` symref
+(that needs server-side access), so `git-monorepo ls` shows `--------` in the
+HEAD column. It matters only for namespace-mode clones.
+
+### A note on where to test
+
+Codeberg is not the place for it. In 2026 Codeberg amended its terms to ban
+repositories consisting mostly of generative-AI output without human
+oversight, passed by member vote. A scratch repo full of machine-generated
+scaffolding is squarely what that targets, whatever the intent. Use a local
+container (`tools/forgejo-probe.sh`) or your own instance.
 
 ### Tested on GitHub: the branch-prefix fallback
 
@@ -263,6 +331,10 @@ tools/git-monorepo clone http://127.0.0.1:8178/monorepo.git a/tinuous/2026/09 /t
   size, and forge size limits apply to the whole thing.
 - Whether `datalad clone` can be taught a refspec-mode member, or whether it
   needs the namespace-aware URL form.
+- Whether Forgejo-aneksajo's git-annex support interacts with member refs at
+  all -- `tools/forgejo-probe.sh` starts the right container but was not
+  runnable where this was written (no usable container runtime, and
+  `codeberg.org` blocked, so the image could not be pulled).
 
 ## Related
 
