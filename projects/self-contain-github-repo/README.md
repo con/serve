@@ -112,9 +112,9 @@ linked by `.gitmodules` at every level with relative URLs. Verified results:
 - `git submodule update --init --recursive`: walks all three levels, each
   cloned from its own namespaced URL
 - the leaf is a genuine git-annex repository; its `git-annex` branch is stored
-  **inside its own namespace**
-  (`.../09/refs/heads/git-annex`) -- no collision with any other member, and
-  none with the top-level repo
+  **inside its own namespace** (`.../09/refs/heads/git-annex`), colliding with
+  nothing. This is safe only when the forge is plain git storage -- on a forge
+  that is *itself* an annex remote it breaks, see the aneksajo section
 - `git annex get` retrieves content from the public URLs recorded at ingest
   (`web` special remote), in both a submodule checkout and a standalone
   refspec-mode clone
@@ -155,7 +155,8 @@ Helper tooling for the "many repos in one" case: none found.
 | Forge                                         | `GIT_NAMESPACE`                  | Custom refs           |
 | --------------------------------------------- | -------------------------------- | --------------------- |
 | stock git (`git-http-backend`, gitolite, ssh) | yes, documented                  | yes                   |
-| Gitea / Forgejo                               | **ignored** (tested)             | **accepted** (tested) |
+| Forgejo-aneksajo                              | absent                           | **accepted** (tested) |
+| Gitea                                         | absent                           | **accepted** (tested) |
 | GitHub                                        | not client-selectable            | untested              |
 | GitLab                                        | ignored; folded into the default | partial               |
 
@@ -164,15 +165,13 @@ additionally rejects pushes into GitLab's *own* internal ref namespaces. On
 GitHub the branch-prefix fallback is verified working regardless of how the
 custom-ref question resolves.
 
-### Gitea and Forgejo, read and then tested
+### Gitea, read and then tested
 
 Source read against `go-gitea/gitea` at `191287d`, then **built from source
 (SQLite) and run**, and both questions probed against the live instance.
 Forgejo is a soft fork of Gitea and has not diverged in this code path;
-Codeberg and `forgejo.org` were unreachable from the environment this was
-written in, so Forgejo itself was not exercised -- treat its row as inherited
-from Gitea rather than independently confirmed. `tools/forgejo-probe.sh`
-repeats both probes against a real Forgejo-aneksajo container.
+Forgejo-aneksajo was then tested directly -- see below -- so its row is no
+longer inherited.
 
 **Namespaces: ignored.** `GIT_NAMESPACE` and `refs/namespaces` appear nowhere
 in the codebase -- not in the git wrapper, the HTTP routes, the config, or
@@ -221,6 +220,75 @@ open question of the kind GitHub still has.
 One cosmetic gap: refspec-mode pushes cannot set a member's `HEAD` symref
 (that needs server-side access), so `git-monorepo ls` shows `--------` in the
 HEAD column. It matters only for namespace-mode clones.
+
+### Forgejo-aneksajo, built and run
+
+This is the intended production target, so it was tested rather than
+inferred. `codeberg.org` is unreachable from the environment this was written
+in, so neither the container image nor a git clone was available -- but **the
+Go module proxy serves the source**, because Google's proxy can reach Codeberg
+even when we cannot:
+
+```
+go list -m -versions codeberg.org/forgejo-aneksajo/forgejo-aneksajo
+go mod download -json codeberg.org/forgejo-aneksajo/forgejo-aneksajo@v1.21.11-1.git-annex0
+```
+
+`v1.21.11-1.git-annex0` is the newest version reachable that way; later
+releases renamed the module to `forgejo.org`, which is blocked. Two wrinkles
+in building it: the module zip omits the generated `options/locale/locale_*.ini`
+(copy `options/locales/gitea_*.ini` over them), and Forgejo 1.21 has a logger
+data race that Go 1.24+ turns into a fatal error, so build it with
+`GOTOOLCHAIN=go1.21.13`.
+
+Results against the running instance, `[annex] ENABLED = true`, builtin SSH:
+
+| Question                                    | Result                                     |
+| ------------------------------------------- | ------------------------------------------ |
+| custom refs, incl. 3-deep `refs/namespaces` | accepted, with branch+tag controls passing |
+| are they advertised to `ls-remote`?         | yes                                        |
+| does a plain clone pull them?               | no                                         |
+| `GIT_NAMESPACE`                             | absent from the source, ignored live       |
+| annex **content** stored on the forge       | works, with the constraint below           |
+
+**The constraint: one `git-annex` branch per repository.** Giving each member
+its own namespaced annex branch breaks content transfer. `git annex copy --to`
+uploads the bytes and then fails server-side:
+
+```
+fatal: not a valid object name refs/heads/git-annex
+git-annex: user error (git [... "commit-tree" ... "-p" "refs/heads/git-annex"] exited 128)
+```
+
+`git-annex-shell` records location state in the repository's *canonical*
+`refs/heads/git-annex`, which does not exist when every member namespaces its
+own. The content lands but the bookkeeping does not, which is worse than a
+clean failure.
+
+The fix is to let all members **share** the canonical `refs/heads/git-annex`
+and namespace only their content branches. That works, and works well: the
+branch union-merges across members, and after two members had pushed, the
+shared `uuid.log` correctly listed the forge plus both members. Because annex
+keys are content-addressed, the single object store also deduplicates content
+across members -- the same property namespaces give for git objects.
+
+Verified end to end: two members (`.../2026/09` and `.../2026/10`) pushed to
+namespaced content branches with content uploaded to the forge, then fetched
+into fresh clones by refspec, with `git annex get` pulling **from the forge**
+rather than from a web URL. A plain clone of the repository still returned
+only `README.md`.
+
+One rough edge: `git annex sync` pushes the content branch to canonical
+`refs/heads/*`, bypassing the namespaced layout. Set `remote.<r>.push`
+explicitly (`git-monorepo clone` does) and prefer `--no-content` plus an
+explicit push.
+
+So the two deployment modes want different annex layouts:
+
+| Forge's role                            | `git-annex` branch               |
+| --------------------------------------- | -------------------------------- |
+| plain git storage, content elsewhere    | per member, inside its namespace |
+| annex remote (aneksajo) holding content | one shared canonical branch      |
 
 ### A note on where to test
 
@@ -331,10 +399,10 @@ tools/git-monorepo clone http://127.0.0.1:8178/monorepo.git a/tinuous/2026/09 /t
   size, and forge size limits apply to the whole thing.
 - Whether `datalad clone` can be taught a refspec-mode member, or whether it
   needs the namespace-aware URL form.
-- Whether Forgejo-aneksajo's git-annex support interacts with member refs at
-  all -- `tools/forgejo-probe.sh` starts the right container but was not
-  runnable where this was written (no usable container runtime, and
-  `codeberg.org` blocked, so the image could not be pulled).
+- Whether newer Forgejo-aneksajo (v7+/v14, module renamed to `forgejo.org`)
+  still behaves as v1.21 does here. The pre-receive dispatch is unchanged
+  between aneksajo 1.21 and Gitea at `191287d`, which is reassuring but not
+  proof.
 
 ## Related
 

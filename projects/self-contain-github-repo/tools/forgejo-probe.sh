@@ -9,6 +9,20 @@
 # datalad-fuse's fixture, which is the known-good recipe:
 #   datalad_fuse/tests/conftest_forgejo.py  (datalad/datalad-fuse#127)
 #
+# If codeberg.org is unreachable but proxy.golang.org is not, you can still
+# get an instance -- the Go module proxy mirrors the source:
+#
+#   go list -m -versions codeberg.org/forgejo-aneksajo/forgejo-aneksajo
+#   go mod download -json codeberg.org/forgejo-aneksajo/forgejo-aneksajo@v1.21.11-1.git-annex0
+#   # unzip it, then, from the source root:
+#   cp options/locales/gitea_en-US.ini options/locale/locale_en-US.ini
+#   GOTOOLCHAIN=go1.21.13 go build -tags "sqlite sqlite_unlock_notify" -o forgejo .
+#
+# The locale copy is needed because the module zip omits generated files, and
+# the pinned toolchain because Forgejo 1.21 has a logger data race that Go
+# 1.24+ turns into a fatal error. Then point this script at that instance:
+#   ./forgejo-probe.sh http://127.0.0.1:3001 <user> <pass>
+#
 #   ./forgejo-probe.sh            # start a container, probe, tear down
 #   ./forgejo-probe.sh <url> <user> <pass>   # probe an instance you already run
 set -uo pipefail
