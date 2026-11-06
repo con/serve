@@ -333,6 +333,53 @@ present and the daemon starts fine; with no usable bridge, `--network host`
 publishes the port. The image comes from `codeberg.org`, which the environment
 must allow.
 
+### Annex content on aneksajo 16: HTTP reads, SSH writes
+
+Tested against the containerised 16.0.7 instance:
+
+| Transport | Annex content |
+| --- | --- |
+| HTTPS | **download only** -- git-annex probes the remote, fails, and sets `remote.origin.annex-ignore` itself |
+| SSH | **read and write**, via `git-annex-shell` (present in the image, git-annex 10.20261026) |
+
+So `git annex copy --to origin` needs an SSH remote and a registered key;
+over HTTPS it refuses with `cannot determine uuid for origin ...
+(remote.origin.annex-ignore is set)`. With SSH it works, the content lands in
+the single repository's annex store
+(`.../repositories/<owner>/<repo>.git/annex/objects`), and a fresh member
+clone pulls it back from the forge rather than from a web URL.
+
+This also confirms the design choice from the 1.21 testing: the upload did
+**not** hit the `fatal: not a valid object name refs/heads/git-annex` failure,
+because the populator creates the shared canonical annex branch before any
+member pushes. The members then share one annex store, which deduplicates
+content across them.
+
+Because the demo should stay clonable by anyone without an SSH key,
+`populate-demo-repo.sh` registers content against public URLs (the `web`
+special remote) rather than uploading it. Uploading to the forge is then an
+optional extra step over SSH.
+
+### Running the populator yourself
+
+It needs nothing but a push URL, so it can be run from anywhere credentials
+work:
+
+```bash
+git clone -b claude/determined-feynman-ub6vnd https://github.com/con/serve
+cd serve/projects/self-contain-github-repo
+export HUB_API=https://hub.centerforopenneuroscience.org/api/v1
+export HUB_REPO=<owner>/<repo>
+export TOKEN=<a token with write:repository>
+./tools/populate-demo-repo.sh \
+  "https://<user>:$TOKEN@hub.centerforopenneuroscience.org/$HUB_REPO.git" \
+  "$(basename "$HUB_REPO")"
+```
+
+`HUB_API`/`HUB_REPO`/`TOKEN` are optional and used only to export the forge's
+real issues into the `issues` member and to set the default branch back to
+`main`. The target repository must be empty.
+
 ### A demo repository on hub.centerforopenneuroscience.org
 
 The CON hub runs **Forgejo-aneksajo 16.0.7-git-annex1+gitea-1.22.0** -- far
