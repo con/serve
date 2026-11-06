@@ -290,6 +290,55 @@ So the two deployment modes want different annex layouts:
 | plain git storage, content elsewhere    | per member, inside its namespace |
 | annex remote (aneksajo) holding content | one shared canonical branch      |
 
+### A demo repository on hub.centerforopenneuroscience.org
+
+The CON hub runs **Forgejo-aneksajo 16.0.7-git-annex1+gitea-1.22.0** -- far
+newer than the v1.21 that was buildable from the module proxy, so it is the
+first chance to check this design against a current aneksajo.
+
+`tools/populate-demo-repo.sh <push-url>` builds the whole demo into one
+repository:
+
+```
+refs/heads/main                                         the project
+refs/heads/git-annex                                    shared annex branch
+refs/namespaces/tinuous/refs/heads/main                 CI archive root
+refs/namespaces/tinuous/refs/namespaces/2025/...        2025 logs (annexed)
+refs/namespaces/tinuous/refs/namespaces/2026/...        2026 logs (annexed)
+refs/namespaces/issues/refs/heads/main                  issue export
+```
+
+`main` carries two members as submodules (`tinuous`, `issues`) and `tinuous`
+carries two more (`2025`, `2026`), so the hierarchy is three levels deep with
+annexed content at the top and at both leaves. Each `.gitmodules` entry points
+its `url` back at the same repository and names the member in a
+`monorepo-namespace` key, since the forge serves no per-namespace URL.
+
+Verified against a local bare repo over HTTP: a plain clone is 192K and pulls
+no member, `git-monorepo ls` lists all five, each member fetches on its own,
+and `git annex get` retrieves content at every level.
+
+Two things that only showed up once the demo was built, both consequences of
+the shared annex branch:
+
+1. **Pushing the shared branch needs a union merge.** Each member's
+   `git-annex` branch is an independent root, so the second and later members
+   are rejected as non-fast-forward. `git annex merge` against the fetched
+   remote branch is what reconciles them; `populate-demo-repo.sh` does this
+   before every annexed push.
+2. **The annex branch now lives in one of two places**, and tooling has to
+   look in both: inside the member's namespace when the forge is plain git
+   storage, or at the canonical `refs/heads/git-annex` when members share it.
+   `git-monorepo clone` fetches whichever exists directly into the local
+   `refs/heads/git-annex`, because git-annex only ever consults that name -- a
+   clone that misses it gets an empty annex branch and every pointer dangles.
+
+Status: not yet populated on the hub. The supplied token authenticates as
+`yarikoptic-gitmate`, which reports `{admin: false, push: false, pull: true}`
+on the target repository, so git push and the contents API both return 403
+while `write:issue` succeeds. It needs write access for that account, not a
+different token format.
+
 ### A note on where to test
 
 Codeberg is not the place for it. In 2026 Codeberg amended its terms to ban

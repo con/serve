@@ -98,9 +98,25 @@ def cmd_clone(a):
     git("checkout", "-q", "-B", a.branch, f"origin/{a.branch}", cwd=dest)
     git("config", f"branch.{a.branch}.remote", "origin", cwd=dest)
     git("config", f"branch.{a.branch}.merge", f"refs/heads/{a.branch}", cwd=dest)
-    if git("for-each-ref", "--format=%(refname)", "refs/remotes/origin/git-annex",
-           cwd=dest):
-        print(f"note: {a.namespace} carries a git-annex branch; "
+
+    # The member's git-annex branch lives in one of two places, and which one
+    # depends on the deployment (see the project README): inside the member's
+    # own namespace when the forge is plain git storage, or at the repository's
+    # canonical refs/heads/git-annex when the forge stores annex content and
+    # members share it. Either way git-annex itself only ever looks at a local
+    # refs/heads/git-annex, so fetch whichever exists straight into that name --
+    # otherwise `git annex init` makes an empty one and every pointer dangles.
+    remote_refs = {line.split("\t")[-1]
+                   for line in git("ls-remote", a.url).splitlines() if line}
+    annex_src = next((r for r in (f"{prefix}/refs/heads/git-annex",
+                                  "refs/heads/git-annex") if r in remote_refs),
+                     None)
+    if annex_src:
+        git("config", "--add", "remote.origin.fetch",
+            f"+{annex_src}:refs/heads/git-annex", cwd=dest)
+        git("fetch", "-q", "origin", cwd=dest)
+        where = "its own namespace" if annex_src.startswith(prefix) else "the shared branch"
+        print(f"note: git-annex branch fetched from {where}; "
               f"run `git annex init` in {dest}")
     print(f"cloned {a.namespace} -> {dest} (mode={a.mode})")
 
