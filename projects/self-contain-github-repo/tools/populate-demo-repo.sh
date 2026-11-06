@@ -30,6 +30,24 @@ export GIT_AUTHOR_NAME="${GIT_AUTHOR_NAME:-con/serve demo}"
 export GIT_AUTHOR_EMAIL="${GIT_AUTHOR_EMAIL:-demo@example.org}"
 export GIT_COMMITTER_NAME="$GIT_AUTHOR_NAME" GIT_COMMITTER_EMAIL="$GIT_AUTHOR_EMAIL"
 
+# The project's own history goes to refs/heads/main, so an already-initialised
+# repository (Forgejo's "Initialize this repository", GitHub's auto_init) leaves
+# an unrelated root commit there and the push is rejected as a non-fast-forward.
+# Fail loudly rather than populate the members and silently skip the project.
+REMOTE_MAIN=$(git ls-remote "$PUSH" refs/heads/main 2>/dev/null | awk '{print $1}')
+if [ -n "$REMOTE_MAIN" ] && [ "${FORCE:-0}" != 1 ]; then
+  cat >&2 <<EOM
+refs/heads/main already exists on the target (${REMOTE_MAIN:0:12}).
+
+This script writes the project's own history there, so it needs an EMPTY
+repository -- create it without "Initialize this repository".
+
+Re-run with FORCE=1 to overwrite the existing main instead.
+EOM
+  exit 1
+fi
+MAIN_LEAD=""; [ "${FORCE:-0}" = 1 ] && MAIN_LEAD="+"
+
 ns_prefix() {  # a/b/c -> refs/namespaces/a/refs/namespaces/b/refs/namespaces/c
   local out=""; local IFS=/
   for p in $1; do out="$out/refs/namespaces/$p"; done
@@ -44,7 +62,9 @@ say() { printf '\n== %s\n' "$*"; }
 # non-fast-forward. `git annex merge` is what performs that union merge.
 member_push() {           # member_push <dir> <namespace|""> [--annex]
   local dir=$1 ns=$2 annex=${3:-} dst
-  if [ -z "$ns" ]; then dst=refs/heads/main; else dst="$(ns_prefix "$ns")/refs/heads/main"; fi
+  local lead=""
+  if [ -z "$ns" ]; then dst=refs/heads/main; lead=$MAIN_LEAD
+  else dst="$(ns_prefix "$ns")/refs/heads/main"; fi
   if [ -n "$annex" ]; then
     $G -C "$dir" remote add origin "$PUSH" 2>/dev/null || \
       $G -C "$dir" remote set-url origin "$PUSH"
@@ -53,9 +73,9 @@ member_push() {           # member_push <dir> <namespace|""> [--annex]
     if $G -C "$dir" rev-parse -q --verify refs/remotes/origin/git-annex >/dev/null; then
       git -C "$dir" -c commit.gpgsign=false annex merge >/dev/null 2>&1
     fi
-    $G -C "$dir" push -q "$PUSH" "main:$dst" "git-annex:refs/heads/git-annex"
+    $G -C "$dir" push -q "$PUSH" "$lead$(echo main):$dst" "git-annex:refs/heads/git-annex"
   else
-    $G -C "$dir" push -q "$PUSH" "main:$dst"
+    $G -C "$dir" push -q "$PUSH" "$lead$(echo main):$dst"
   fi
   $G -C "$dir" rev-parse main
 }
@@ -255,6 +275,24 @@ actually lives.
 EOF
 $G add README.md .gitmodules; $G commit -qm "project README and member submodules"
 echo "   $(member_push "$D" "" --annex)"
+
+# On an empty Forgejo/Gitea repository the FIRST branch pushed under refs/heads/
+# becomes the default, and that is refs/heads/git-annex here, because the first
+# annexed member creates the shared annex branch before the project exists. Left
+# alone, a plain `git clone` checks out git-annex. Put it back.
+say "default branch"
+if [ -n "${HUB_API:-}" ] && [ -n "${HUB_REPO:-}" ]; then
+  code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 -X PATCH \
+    ${TOKEN:+-H "Authorization: token $TOKEN"} ${HUB_BASICAUTH:+-u "$HUB_BASICAUTH"} \
+    -H 'Content-Type: application/json' -d '{"default_branch":"main"}' \
+    "$HUB_API/repos/$HUB_REPO")
+  if [ "$code" = 200 ]; then echo "   set to main via the API"
+  else echo "   WARNING: could not set default branch (http $code) -- set it to 'main' in the forge UI"; fi
+else
+  echo "   NOT SET: pass HUB_API and HUB_REPO (plus TOKEN or HUB_BASICAUTH) to set it,"
+  echo "   or set the default branch to 'main' in the forge UI. Until then a plain"
+  echo "   clone checks out refs/heads/git-annex."
+fi
 
 say "done -- refs now on the forge"
 git ls-remote "$PUSH" | sed 's|refs/namespaces/|  ns:|' | sed 's/^/  /'

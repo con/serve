@@ -152,13 +152,14 @@ Helper tooling for the "many repos in one" case: none found.
 
 ## Forge support
 
-| Forge                                         | `GIT_NAMESPACE`                  | Custom refs           |
-| --------------------------------------------- | -------------------------------- | --------------------- |
-| stock git (`git-http-backend`, gitolite, ssh) | yes, documented                  | yes                   |
-| Forgejo-aneksajo                              | absent                           | **accepted** (tested) |
-| Gitea                                         | absent                           | **accepted** (tested) |
-| GitHub                                        | not client-selectable            | untested              |
-| GitLab                                        | ignored; folded into the default | partial               |
+| Forge | `GIT_NAMESPACE` | Custom refs |
+| --- | --- | --- |
+| stock git (`git-http-backend`, gitolite, ssh) | yes, documented | yes |
+| Forgejo-aneksajo 16.0.7 | absent | **accepted** (tested) |
+| Forgejo-aneksajo 1.21 | absent | **accepted** (tested) |
+| Gitea (current source) | absent | **accepted** (tested) |
+| GitHub | not client-selectable | untested |
+| GitLab | ignored; folded into the default | partial |
 
 "Custom refs" means refs outside `refs/heads/` and `refs/tags/`. Gitaly
 additionally rejects pushes into GitLab's *own* internal ref namespaces. On
@@ -290,6 +291,48 @@ So the two deployment modes want different annex layouts:
 | plain git storage, content elsewhere    | per member, inside its namespace |
 | annex remote (aneksajo) holding content | one shared canonical branch      |
 
+### Forgejo-aneksajo 16.0.7, in a container
+
+The open question -- whether a *current* aneksajo accepts custom refs -- is
+now answered, by running the hub's exact version locally:
+
+```
+docker pull codeberg.org/forgejo-aneksajo/forgejo-aneksajo:v16.0.7-git-annex1-rootless
+docker run -d --network host -e FORGEJO__security__INSTALL_LOCK=true \
+  -e FORGEJO__annex__ENABLED=true <image>
+```
+
+reporting `16.0.7-git-annex1+gitea-1.22.0`, byte-identical to the hub. With an
+ordinary branch and tag passing as controls, all seven probe refs were
+accepted, advertised to `ls-remote`, absent from a plain clone, and deletable
+-- including the 3-deep `refs/namespaces` path and a per-member `git-annex`
+branch. So the design holds on aneksajo 16 as it did on 1.21.
+
+The whole demo was then built and verified against that instance: a plain
+clone of 192K on `main` pulling no member, all five members listed, each
+fetchable alone, `git annex get` working at the top and both leaves, and three
+real issues exported into the `issues` member.
+
+Two traps the real forge sprang, both now handled by
+`tools/populate-demo-repo.sh`:
+
+1. **The target repository must be empty.** The populator writes the project's
+   own history to `refs/heads/main`, so a repository created with "Initialize
+   this repository" already has an unrelated root there and the push is
+   rejected -- after the members have been written, which is the worst time to
+   find out. It now checks up front and refuses, with `FORCE=1` to override.
+2. **The default branch ends up wrong.** On an empty Forgejo/Gitea repository
+   the first branch pushed under `refs/heads/` becomes the default, and that is
+   `refs/heads/git-annex`, because the first annexed member creates the shared
+   annex branch before the project exists. A plain clone then checks out
+   `git-annex`. The populator resets it through the API, and says so loudly
+   when it has no API credentials to do it with.
+
+Note on running this in a cloud session: `dockerd`, `containerd` and `runc` are
+present and the daemon starts fine; with no usable bridge, `--network host`
+publishes the port. The image comes from `codeberg.org`, which the environment
+must allow.
+
 ### A demo repository on hub.centerforopenneuroscience.org
 
 The CON hub runs **Forgejo-aneksajo 16.0.7-git-annex1+gitea-1.22.0** -- far
@@ -333,11 +376,17 @@ the shared annex branch:
    `refs/heads/git-annex`, because git-annex only ever consults that name -- a
    clone that misses it gets an empty annex branch and every pointer dangles.
 
-Status: not yet populated on the hub. The supplied token authenticates as
-`yarikoptic-gitmate`, which reports `{admin: false, push: false, pull: true}`
-on the target repository, so git push and the contents API both return 403
-while `write:issue` succeeds. It needs write access for that account, not a
-different token format.
+Status: not yet populated on the hub, blocked on one credential detail. The
+session's egress proxy injects a saved `Authorization` header for the hub, so
+whatever token a client sends is discarded -- a request with *no* header, one
+with a valid token and one with a garbage token all return the identical
+authenticated error, which is how this was established. The injected token
+belongs to `yarikoptic-gitmate` and demonstrably holds `read:repository` and
+`write:issue` but not `write:repository`: reads and issue creation succeed
+while git push and the contents API return 403, and the repository reports
+`{admin: false, push: false, pull: true}` even after that account was granted
+collaborator write. So the fix is the token's scopes, not the collaborator
+grant and not the token's format.
 
 ### A note on where to test
 
