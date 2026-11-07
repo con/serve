@@ -245,22 +245,73 @@ git clone <this repo>
 fetches \`refs/heads/*\` only. The members are **not** pulled: you get the code,
 \`.gitmodules\` and two empty submodule gitlinks.
 
-## Fetching a member
+## Listing the members
+
+\`git ls-remote\` shows every ref, so the members are already visible -- they
+just need the interleaved \`refs/namespaces/\` stripped back out:
+
+\`\`\`console
+git ls-remote <this repo> 'refs/namespaces/*' | while read sha ref; do
+  ns=\${ref#refs/namespaces/}; br=\${ns##*/refs/heads/}; ns=\${ns%/refs/heads/*}
+  printf '%-18s %-10s %s\\n' "\${ns//\\/refs\\/namespaces\\//\/}" "\$br" "\${sha:0:12}"
+done
+\`\`\`
+
+\`\`\`
+issues             main       795c4799edc1
+tinuous            main       e084c6eeb85e
+tinuous/2025       main       94f3ffea2218
+tinuous/2026       main       5239ecb1068c
+\`\`\`
+
+A namespace \`a/b/c\` is stored as
+\`refs/namespaces/a/refs/namespaces/b/refs/namespaces/c/\` -- git interleaves a
+\`refs/namespaces/\` between every component.
+
+## Fetching a member with plain git
 
 The forge serves no per-namespace URL, so \`git submodule update\` cannot
 resolve these on its own -- the gitlink commits are not reachable from
-\`refs/heads/*\` by design. Fetch one explicitly:
+\`refs/heads/*\` by design. There is no single \`git clone\` for it either:
+clone always installs its own \`refs/heads/*\` refspec, and a second one
+pointing at \`refs/remotes/origin/*\` collides with
+
+\`\`\`
+fatal: multiple updates for ref 'refs/remotes/origin/main' not allowed
+\`\`\`
+
+So configure the refspec first, then fetch:
 
 \`\`\`console
-# the 2026 CI logs, and nothing else
 git init tinuous-2026 && cd tinuous-2026
 git remote add origin <this repo>
-git fetch origin \\
-  '+refs/namespaces/tinuous/refs/namespaces/2026/refs/heads/*:refs/remotes/origin/*' \\
-  '+refs/heads/git-annex:refs/remotes/origin/git-annex'
+
+# this member's branches become origin/*
+git config remote.origin.fetch \\
+  '+refs/namespaces/tinuous/refs/namespaces/2026/refs/heads/*:refs/remotes/origin/*'
+# the shared annex branch, under the only name git-annex will look at
+git config --add remote.origin.fetch '+refs/heads/git-annex:refs/heads/git-annex'
+# so that a later push goes back into the namespace, not to refs/heads/main
+git config remote.origin.push \\
+  'refs/heads/main:refs/namespaces/tinuous/refs/namespaces/2026/refs/heads/main'
+
+git fetch origin
 git checkout -b main origin/main
 git annex init && git annex get logs/
 \`\`\`
+
+For a top-level member such as \`tinuous\`, the prefix is just
+\`refs/namespaces/tinuous\`.
+
+If you only want a look and do not care about fetching the project too, one
+command does work, as long as the refspec maps somewhere that does not clash:
+
+\`\`\`console
+git clone -c remote.origin.fetch='+refs/namespaces/tinuous/refs/heads/*:refs/remotes/member/*' \\
+  <this repo> tinuous
+\`\`\`
+
+but that still pulls \`refs/heads/*\` as well, so it is not a cheap clone.
 
 or let the helper do it:
 
