@@ -72,14 +72,30 @@ member_push() {           # member_push <dir> <namespace|""> [--annex]
     $G -C "$dir" remote add origin "$PUSH" 2>/dev/null || \
       $G -C "$dir" remote set-url origin "$PUSH"
     # absent on the first member, hence the guard
-    # annex content cannot travel over HTTPS to Forgejo-aneksajo (download
-    # only), so stop git-annex probing <url>/config and reporting Unauthorized
-    $G -C "$dir" config remote.origin.annex-ignore true
+    # Point git-annex at the forge's P2P-HTTP endpoint. Without this it probes
+    # <url>/config, finds no usable annex remote and sets annex-ignore, which
+    # looks like the forge refusing content over HTTPS. It is not: aneksajo
+    # serves the git-annex P2P protocol at the server root.
+    P2P=$(printf '%s' "$PUSH" | sed -E 's|^(https?)://([^/]+)/.*|annex+\1://\2/git-annex-p2phttp/git-annex/|')
+    case "$P2P" in annex+http*) $G -C "$dir" config remote.origin.annexUrl "$P2P";; esac
     $G -C "$dir" fetch -q origin '+refs/heads/git-annex:refs/remotes/origin/git-annex' 2>/dev/null || true
     if $G -C "$dir" rev-parse -q --verify refs/remotes/origin/git-annex >/dev/null; then
       git -C "$dir" -c commit.gpgsign=false annex merge >/dev/null 2>&1
     fi
-    $G -C "$dir" push -q "$PUSH" "$lead$(echo main):$dst" "git-annex:refs/heads/git-annex"
+    # two pushes: sending the content branch and refs/heads/git-annex together
+    # to an EMPTY repository makes the forge reject the annex branch with
+    # "reference already exists"; separately they both go through
+    $G -C "$dir" push -q "$PUSH" "$lead$(echo main):$dst"
+    # The shared annex branch is a moving target: every member adds to it, and
+    # the forge appends to it too when content lands. Re-merge and retry rather
+    # than assume our local tip is still a fast-forward.
+    local ok=
+    for _ in 1 2 3; do
+      if $G -C "$dir" push -q "$PUSH" "git-annex:refs/heads/git-annex" 2>/dev/null; then ok=1; break; fi
+      $G -C "$dir" fetch -q origin '+refs/heads/git-annex:refs/remotes/origin/git-annex' 2>/dev/null || true
+      git -C "$dir" -c commit.gpgsign=false annex merge >/dev/null 2>&1 || true
+    done
+    [ -n "$ok" ] || { echo "   WARNING: could not push the shared git-annex branch" >&2; }
   else
     $G -C "$dir" push -q "$PUSH" "$lead$(echo main):$dst"
   fi
@@ -335,11 +351,26 @@ git-monorepo clone <this repo> tinuous/2026 ./tinuous-2026
 
 ## Where the annexed content comes from
 
-Files under \`data/\` and \`logs/\` are git-annex pointers whose content is
-registered against public URLs, so \`git annex get\` works for anyone without
-the forge holding a byte. On a Forgejo-aneksajo instance the content can also
-be stored on the forge itself; the members share one \`refs/heads/git-annex\`
-branch so that \`git-annex-shell\` can record where things are.
+Files under \`data/\`, \`logs/\` and \`summary/\` are git-annex pointers whose
+content is registered against public URLs, so \`git annex get\` works for
+anyone even if the forge holds nothing.
+
+The forge can hold it too. Forgejo-aneksajo speaks git-annex's P2P-HTTP
+protocol, served at the instance root, so content moves over ordinary
+HTTP(S) -- no SSH needed. git-annex does not discover the endpoint on its
+own, so point it there:
+
+\`\`\`console
+git config remote.origin.annexUrl \\
+  'annex+https://<host>/git-annex-p2phttp/git-annex/'
+git annex copy --to origin
+\`\`\`
+
+(scheme and host of the repository url, then that fixed path). It needs
+git-annex new enough to have \`git annex p2phttp\`; 10.20240129 does not.
+
+All members share one \`refs/heads/git-annex\` branch, which is what lets the
+forge record where each key lives.
 
 ## \`.gitmodules\`
 

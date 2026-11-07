@@ -27,6 +27,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from urllib.parse import urlsplit
 
 NS = "refs/namespaces"
 
@@ -118,6 +119,11 @@ def cmd_clone(a):
         git("config", "--add", "remote.origin.fetch",
             f"+{annex_src}:refs/heads/git-annex", cwd=dest)
         git("fetch", "-q", "origin", cwd=dest)
+        # so `git annex get` can reach content the forge holds
+        annex_url = None if is_ssh_url(a.url) else p2phttp_url(a.url)
+        if annex_url:
+            git("config", "remote.origin.annexUrl", annex_url, cwd=dest,
+                check=False)
         where = "its own namespace" if annex_src.startswith(prefix) else "the shared branch"
         print(f"note: git-annex branch fetched from {where}; "
               f"run `git annex init` in {dest}")
@@ -218,19 +224,56 @@ def is_ssh_url(url):
     return url.startswith("ssh://") or (":" in url and "//" not in url)
 
 
+def p2phttp_url(url):
+    """The git-annex P2P-HTTP endpoint Forgejo-aneksajo serves, or None.
+
+    aneksajo registers the handler at the server ROOT, not under the
+    repository path (routers/web/web.go: m.Group("", ...) around
+    "/git-annex-p2phttp/git-annex/{uuid}/*"), and the uuid in the path is what
+    selects the repository. git-annex is told about it through
+    remote.<name>.annexUrl as an annex+http(s) url; it appends the uuid itself.
+
+    It is NOT auto-discovered: without annexUrl git-annex falls back to probing
+    <url>/config, finds no usable annex remote and sets annex-ignore, which
+    looks exactly like the forge refusing content over HTTPS. It is not.
+    """
+    parts = urlsplit(url)
+    if parts.scheme not in ("http", "https"):
+        return None
+    return f"annex+{parts.scheme}://{parts.netloc}/git-annex-p2phttp/git-annex/"
+
+
+def _push_annex_branch(url, dest, tries=3):
+    """Push the shared refs/heads/git-annex, re-merging on rejection.
+
+    It is a moving target: every member adds to it, and the forge appends to it
+    when content lands, so our local tip is not reliably a fast-forward by the
+    time we push. Union-merge what is there and try again.
+    """
+    for _ in range(tries):
+        p = subprocess.run(["git", "push", "-q", url,
+                            "git-annex:refs/heads/git-annex"],
+                           cwd=dest, capture_output=True, text=True)
+        if p.returncode == 0:
+            return True
+        git("fetch", "-q", "origin",
+            "+refs/heads/git-annex:refs/remotes/origin/git-annex", cwd=dest,
+            check=False)
+        git("annex", "merge", cwd=dest, check=False)
+    print("  WARNING: could not push the shared git-annex branch", file=sys.stderr)
+    return False
+
+
 def _push_member(url, namespace, dest, branch, annexed):
-    """Push a member's content branch into its namespace.
+    """Push a member's content branch into its namespace, and its content.
 
     The git-annex branch is shared: it goes to the repository's canonical
-    refs/heads/git-annex, union-merged first, because git-annex-shell on an
-    aneksajo forge records location state in exactly that ref and every
-    member's annex branch is an independent root.
+    refs/heads/git-annex, union-merged first, because git-annex-shell records
+    location state in exactly that ref and every member's annex branch is an
+    independent root.
 
-    Annex *content* only moves over SSH. Forgejo-aneksajo serves it read-only
-    over HTTPS, so git-annex marks such a remote annex-ignore and a copy is
-    impossible. Over an https url the content therefore stays where it already
-    is -- which, during an import, is a scratch directory about to be deleted.
-    cmd_import warns about that; this returns whether a copy happened.
+    Content travels over SSH via git-annex-shell, or over HTTP(S) via the
+    forge's P2P-HTTP endpoint once annexUrl points at it.
     """
     prefix = ns_prefix(namespace)
     dst = f"{prefix}/refs/heads/{branch}"
@@ -238,31 +281,31 @@ def _push_member(url, namespace, dest, branch, annexed):
         git("push", "-q", url, f"+{branch}:{dst}", cwd=dest)
         return git("rev-parse", branch, cwd=dest), False
 
-    ssh = is_ssh_url(url)
     git("remote", "add", "origin", url, cwd=dest, check=False)
     git("remote", "set-url", "origin", url, cwd=dest, check=False)
-    if not ssh:
-        git("config", "remote.origin.annex-ignore", "true", cwd=dest, check=False)
+    annex_url = None if is_ssh_url(url) else p2phttp_url(url)
+    if annex_url:
+        git("config", "remote.origin.annexUrl", annex_url, cwd=dest, check=False)
     git("fetch", "-q", "origin",
         "+refs/heads/git-annex:refs/remotes/origin/git-annex", cwd=dest,
         check=False)
     if git("rev-parse", "-q", "--verify", "refs/remotes/origin/git-annex",
            cwd=dest, check=False):
         git("annex", "merge", cwd=dest, check=False)
-    git("push", "-q", url, f"+{branch}:{dst}",
-        "git-annex:refs/heads/git-annex", cwd=dest)
-    if not ssh:
-        return git("rev-parse", branch, cwd=dest), False
+    # Two pushes, deliberately. Sending the namespaced content branch and
+    # refs/heads/git-annex in ONE push to an *empty* repository makes the forge
+    # reject the annex branch with "reference already exists", while the content
+    # branch succeeds. Separately they both go through.
+    git("push", "-q", url, f"+{branch}:{dst}", cwd=dest)
+    _push_annex_branch(url, dest)
 
-    # content first, then re-push the annex branch so the forge's location log
+    # content, then re-push the annex branch so the forge's location log
     # records the copy that just landed
     git("annex", "copy", "--quiet", "--to", "origin", cwd=dest, check=False)
-    git("fetch", "-q", "origin",
-        "+refs/heads/git-annex:refs/remotes/origin/git-annex", cwd=dest,
-        check=False)
-    git("annex", "merge", cwd=dest, check=False)
-    git("push", "-q", url, "git-annex:refs/heads/git-annex", cwd=dest, check=False)
-    return git("rev-parse", branch, cwd=dest), True
+    present = git("annex", "find", "--in", "origin", cwd=dest, check=False)
+    uploaded = bool(present.strip())
+    _push_annex_branch(url, dest)
+    return git("rev-parse", branch, cwd=dest), uploaded
 
 
 def _import_tree(a, src_dir, namespace, depth, work):
@@ -315,11 +358,9 @@ def cmd_import(a):
         print(f"importing {src} -> namespace {a.namespace} "
               f"(depth {a.depth}, annex >= {a.annex_min} bytes)")
         if not is_ssh_url(a.url):
-            print("WARNING: http(s) url. Forgejo-aneksajo serves annex content\n"
-                  "         read-only over HTTPS, so content CANNOT be uploaded.\n"
-                  "         Members will carry annex pointers whose content exists\n"
-                  "         nowhere once this import's scratch tree is removed.\n"
-                  "         Use an ssh:// url to upload content.\n")
+            print(f"annex content will go over P2P-HTTP: {p2phttp_url(a.url)}\n"
+                  "  (against a localhost instance git-annex also needs\n"
+                  "   `git config --global annex.security.allowed-ip-addresses all`)\n")
         root_sha = _import_tree(a, src, a.namespace, a.depth, work)
         print(f"\nroot member {a.namespace} = {root_sha}")
         print("attach it to the project with:")

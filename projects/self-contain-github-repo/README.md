@@ -333,138 +333,79 @@ present and the daemon starts fine; with no usable bridge, `--network host`
 publishes the port. The image comes from `codeberg.org`, which the environment
 must allow.
 
-### Annex content on aneksajo 16: HTTP reads, SSH writes
+### Annex content over HTTP: the P2P-HTTP endpoint
 
-Tested against the containerised 16.0.7 instance:
+**Correction.** An earlier version of this file claimed aneksajo was
+"HTTPS read-only" for annex content and that uploads needed SSH. That was
+wrong. The evidence for it was git-annex printing
 
-| Transport | Annex content |
+```
+Remote origin not usable by git-annex; setting annex-ignore
+```
+
+which is the *client* declining, and says nothing about what the server can
+do. Forgejo-aneksajo implements git-annex's P2P-HTTP protocol and content
+uploads over plain HTTP(S) work.
+
+`routers/web/web.go` registers the handler at the server **root**, not under
+the repository path, because the uuid in the path selects the repository:
+
+```go
+m.Group("", func() {
+    m.Methods("GET,POST", "/git-annex-p2phttp/git-annex/{uuid}/*", repo.AnnexP2PHTTP)
+}, ignoreCSRF, annexEnabled, annexP2PHTTPEnabled)
+```
+
+and `modules/setting/annex.go` makes it **opt-out**, so it is on wherever
+`[annex] ENABLED` is:
+
+```go
+Enabled        bool   `ini:"ENABLED"`
+DisableP2PHTTP bool   `ini:"DISABLE_P2PHTTP"`
+P2PHTTPCPUs    string `ini:"P2PHTTP_CPUS"`
+P2PHTTPJobs    string `ini:"P2PHTTP_JOBS"`
+```
+
+Three things have to line up on the client, and all three were wrong here:
+
+| Requirement | What went wrong |
 | --- | --- |
-| HTTPS | **download only** -- git-annex probes the remote, fails, and sets `remote.origin.annex-ignore` itself |
-| SSH | **read and write**, via `git-annex-shell` (present in the image, git-annex 10.20261026) |
+| git-annex new enough | the test client was 10.20240129, which has no `p2phttp` command at all -- P2P-HTTP postdates it |
+| `remote.<name>.annexUrl` set | it is **not** auto-discovered; without it git-annex probes `<url>/config`, finds nothing and sets `annex-ignore` |
+| the host reachable | against a localhost instance git-annex's SSRF guard also refuses, needing `annex.security.allowed-ip-addresses` |
 
-So `git annex copy --to origin` needs an SSH remote and a registered key;
-over HTTPS it refuses with `cannot determine uuid for origin ...
-(remote.origin.annex-ignore is set)`. With SSH it works, the content lands in
-the single repository's annex store
-(`.../repositories/<owner>/<repo>.git/annex/objects`), and a fresh member
-clone pulls it back from the forge rather than from a web URL.
-
-This also confirms the design choice from the 1.21 testing: the upload did
-**not** hit the `fatal: not a valid object name refs/heads/git-annex` failure,
-because the populator creates the shared canonical annex branch before any
-member pushes. The members then share one annex store, which deduplicates
-content across them.
-
-Because the demo should stay clonable by anyone without an SSH key,
-`populate-demo-repo.sh` registers content against public URLs (the `web`
-special remote) rather than uploading it. Uploading to the forge is then an
-optional extra step over SSH.
-
-### Bugs the first real run found
-
-The populator was first run against the CON hub by its owner, on a machine
-with working credentials, and three defects showed up that the local testing
-had not provoked:
-
-1. **The SHA was returned through stdout.** `member_push` ended with
-   `git rev-parse`, and the callers did `SHA=$(member_push ...)`. On some
-   git-annex versions `Remote origin not usable by git-annex; setting
-   annex-ignore` goes to **stdout**, so the capture swallowed it along with the
-   SHA, and `update-index --cacheinfo` then got `160000,<noise>\n<sha>,<path>`:
-
-   ```
-   error: option 'cacheinfo' expects <mode>,<sha1>,<path>
-   ```
-
-   A function whose return value is its stdout cannot tolerate any other
-   command inside it writing there. Split into `member_push` (diagnostics only)
-   and `member_sha`.
-2. **The scratch tree could not be removed.** git-annex makes its object files
-   and their directories read-only, so the `EXIT` trap's `rm -rf` failed with
-   `Permission denied`. It now does `chmod -R u+w` first.
-3. **git-annex probed the HTTPS remote** and reported
-   `<url>/config download failed: Unauthorized`. Harmless but alarming, and
-   pointless because aneksajo cannot take content over HTTPS anyway. The
-   populator now sets `remote.origin.annex-ignore` itself.
-
-Member refs are also force-pushed now, so a re-run resets the demo instead of
-failing on non-fast-forward against a half-populated repository. `main` is
-still guarded, with `FORCE=1` to override.
-
-### Importing an existing tree: `git-monorepo import`
-
-The demo is hand-built, but the real case is an existing directory tree --
-con/tinuous output for a project, organised `<year>/<month>/<run>/`. `import`
-turns such a tree into a nested hierarchy of members in one repository:
-
-```bash
-git-monorepo import ssh://git@forge/owner/dandi-cli.git tinuous ./tinuous-dandi-cli \
-    --depth 2 --annex-min 65536
-```
-
-`--depth 2` makes the first two directory levels (`<year>/` and `<month>/`)
-members of their own; everything below stays as ordinary directories inside
-the month member. Files at or above `--annex-min` go to git-annex, smaller
-ones stay in git. Each level gets a `.gitmodules` naming its children, and the
-root member's SHA is printed so it can be attached to the project with
-`git-monorepo attach`.
-
-A 31-file, 2.4M tree imported as:
+The annexUrl is derived from the repository url -- scheme and host only, then
+the fixed path:
 
 ```
-tinuous/2024/01    5 in git, 2 annexed, 0 submodule(s) content->forge
-tinuous/2024/02    5 in git, 2 annexed, 0 submodule(s) content->forge
-tinuous/2024       1 in git, 0 annexed, 2 submodule(s)
-tinuous/2025/01    5 in git, 2 annexed, 0 submodule(s) content->forge
-tinuous/2025/02    5 in git, 2 annexed, 0 submodule(s) content->forge
-tinuous/2025       1 in git, 0 annexed, 2 submodule(s)
-tinuous            1 in git, 0 annexed, 2 submodule(s)
+repo:      https://forge.example.org/owner/repo.git
+annexUrl:  annex+https://forge.example.org/git-annex-p2phttp/git-annex/
 ```
 
-**The url must be `ssh://` for the content to go anywhere.** Annex content is
-read-only over HTTPS on aneksajo, so over an https url the import pushes
-pointers whose content then exists nowhere, because the import's scratch tree
-is deleted at the end. That was a real bug in the first version of this
-command; it now uploads over SSH and prints `*** CONTENT NOT UPLOADED ***`
-per member otherwise, with a warning up front.
+With that set, `git annex copy --to origin` works over HTTP. Verified with
+git-annex 10.20261026 against aneksajo 16.0.7: a `git-monorepo import` over a
+plain `http://` url put 8 objects (2.3M) into the forge's annex store, and
+fresh per-member clones pulled every one of them back. SSH still works too,
+through `git-annex-shell`; it is simply not required.
 
-### How it partitions
+Both `git-monorepo` and `populate-demo-repo.sh` now set `annexUrl`
+themselves.
 
-Annexed content sits at every level of the demo, so the split is visible:
+### An empty repository needs two pushes
 
-| Member | Annexed file |
-| --- | --- |
-| `(main)` | `data/sample.dat` |
-| `tinuous` | `summary/all-runs.tsv` |
-| `tinuous/2025` | `logs/run-9001.log`, `logs/run-9001.err` |
-| `tinuous/2026` | `logs/run-9101.log`, `logs/run-9102.log` |
-| `issues` | `issues/attachments/thread-dump.txt` |
-
-Each member's working tree holds only its own files, and fetching one brings
-only its own history. What is shared is underneath: one git object store, one
-annex object store, and one `refs/heads/git-annex` whose `uuid.log` lists
-every member:
+A member's content branch and `refs/heads/git-annex` cannot go in the *same*
+push to an **empty** repository: the content branch is accepted and the annex
+branch is rejected with
 
 ```
-13768e3c-...  tinuous-2026
-8087c970-...  tinuous-2025
-c4bb46e3-...  demo-main
-d51b8f06-...  issues-export
-fed318c2-...  tinuous-root
+ ! [remote rejected] git-annex -> git-annex (reference already exists)
 ```
 
-One caveat on dedup across members. Identical bytes do **not** necessarily
-share an object: the default `SHA256E` backend puts the file's extension in
-the key, so the same content as `sample.dat` and as `run-9102.log` yields
-
-```
-SHA256E-s29809--0df26be0...cc2a58.dat
-SHA256E-s29809--0df26be0...cc2a58.log
-```
-
--- same hash, different keys, stored twice. Dedup across members is real only
-where the extensions match, or with a plain `SHA256` backend
-(`git annex config --set annex.backend SHA256`).
+even though `ls-remote` shows the repository has no refs at all. Pushed
+separately, both succeed. Once the repository is non-empty a combined push is
+fine, which is why this only shows up on the very first member and made the
+first import of a fresh repository fail after writing one member. Both tools
+now always push the two refs separately.
 
 ### Running the populator yourself
 
