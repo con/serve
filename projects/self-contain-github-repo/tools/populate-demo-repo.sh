@@ -23,7 +23,10 @@ set -euo pipefail
 
 PUSH=${1:?usage: populate-demo-repo.sh <push-url> [<repo-basename>]}
 BASENAME=${2:-$(basename "${PUSH%.git}")}
-W=$(mktemp -d); trap 'rm -rf "$W"' EXIT
+W=$(mktemp -d)
+# git-annex makes its object files and their directories read-only, so a plain
+# `rm -rf` on the scratch tree fails with "Permission denied".
+trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
 
 G="git -c commit.gpgsign=false -c push.negotiate=false -c advice.detachedHead=false"
 export GIT_AUTHOR_NAME="${GIT_AUTHOR_NAME:-con/serve demo}"
@@ -64,11 +67,14 @@ member_push() {           # member_push <dir> <namespace|""> [--annex]
   local dir=$1 ns=$2 annex=${3:-} dst
   local lead=""
   if [ -z "$ns" ]; then dst=refs/heads/main; lead=$MAIN_LEAD
-  else dst="$(ns_prefix "$ns")/refs/heads/main"; fi
+  else dst="$(ns_prefix "$ns")/refs/heads/main"; lead="+"; fi
   if [ -n "$annex" ]; then
     $G -C "$dir" remote add origin "$PUSH" 2>/dev/null || \
       $G -C "$dir" remote set-url origin "$PUSH"
     # absent on the first member, hence the guard
+    # annex content cannot travel over HTTPS to Forgejo-aneksajo (download
+    # only), so stop git-annex probing <url>/config and reporting Unauthorized
+    $G -C "$dir" config remote.origin.annex-ignore true
     $G -C "$dir" fetch -q origin '+refs/heads/git-annex:refs/remotes/origin/git-annex' 2>/dev/null || true
     if $G -C "$dir" rev-parse -q --verify refs/remotes/origin/git-annex >/dev/null; then
       git -C "$dir" -c commit.gpgsign=false annex merge >/dev/null 2>&1
@@ -77,8 +83,15 @@ member_push() {           # member_push <dir> <namespace|""> [--annex]
   else
     $G -C "$dir" push -q "$PUSH" "$lead$(echo main):$dst"
   fi
-  $G -C "$dir" rev-parse main
 }
+
+# member_push writes only diagnostics, never a value, so compute the SHA with a
+# separate call. Returning it through stdout was a real bug: git-annex prints
+# "Remote origin not usable by git-annex" to stdout on some versions, and
+# $(member_push ...) swallowed that into the SHA, which then reached
+# `update-index --cacheinfo` as "160000,<noise>\n<sha>,<path>" and failed with
+#   error: option 'cacheinfo' expects <mode>,<sha1>,<path>
+member_sha() { $G -C "$1" rev-parse main; }
 
 # .gitmodules entry. The forge cannot serve a namespace at its own URL, so the
 # url points back at this same repository and the namespace is recorded in a
@@ -110,7 +123,7 @@ EOF
 $G add logs/index.json; $G commit -qm "2025 run index (small, stays in git)"
 annex_from_url logs/run-9001.log https://raw.githubusercontent.com/git/git/master/README.md
 $G commit -qm "annexed CI log for run 9001"
-SHA_2025=$(member_push "$D" tinuous/2025 --annex)
+member_push "$D" tinuous/2025 --annex; SHA_2025=$(member_sha "$D")
 echo "   $SHA_2025"
 
 ############################################################ tinuous/2026
@@ -126,7 +139,7 @@ $G add logs/index.json; $G commit -qm "2026 run index"
 annex_from_url logs/run-9101.log https://raw.githubusercontent.com/con/duct/main/README.md
 annex_from_url logs/run-9102.log https://raw.githubusercontent.com/datalad/datalad/maint/README.md
 $G commit -qm "annexed CI logs for runs 9101, 9102"
-SHA_2026=$(member_push "$D" tinuous/2026 --annex)
+member_push "$D" tinuous/2026 --annex; SHA_2026=$(member_sha "$D")
 echo "   $SHA_2026"
 
 ############################################################ tinuous (root)
@@ -143,7 +156,7 @@ $G add README.md; $G commit -qm "tinuous archive root"
 $G update-index --add --cacheinfo 160000,"$SHA_2025",2025
 $G update-index --add --cacheinfo 160000,"$SHA_2026",2026
 $G add .gitmodules; $G commit -qm "attach 2025 and 2026 as submodules"
-SHA_TIN=$(member_push "$D" tinuous)
+member_push "$D" tinuous; SHA_TIN=$(member_sha "$D")
 echo "   $SHA_TIN"
 
 ############################################################ issues
@@ -182,7 +195,7 @@ pathlib.Path("issues/README.md").write_text(
     "same namespace.\n")
 PY
 $G add issues; $G commit -qm "issue export as flat JSON"
-SHA_ISS=$(member_push "$D" issues)
+member_push "$D" issues; SHA_ISS=$(member_sha "$D")
 echo "   $SHA_ISS"
 
 ############################################################ the project
@@ -274,7 +287,7 @@ Each entry carries a \`monorepo-namespace\` key naming the member's namespace.
 actually lives.
 EOF
 $G add README.md .gitmodules; $G commit -qm "project README and member submodules"
-echo "   $(member_push "$D" "" --annex)"
+member_push "$D" "" --annex; echo "   $(member_sha "$D")"
 
 # On an empty Forgejo/Gitea repository the FIRST branch pushed under refs/heads/
 # becomes the default, and that is refs/heads/git-annex here, because the first

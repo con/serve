@@ -360,6 +360,37 @@ Because the demo should stay clonable by anyone without an SSH key,
 special remote) rather than uploading it. Uploading to the forge is then an
 optional extra step over SSH.
 
+### Bugs the first real run found
+
+The populator was first run against the CON hub by its owner, on a machine
+with working credentials, and three defects showed up that the local testing
+had not provoked:
+
+1. **The SHA was returned through stdout.** `member_push` ended with
+   `git rev-parse`, and the callers did `SHA=$(member_push ...)`. On some
+   git-annex versions `Remote origin not usable by git-annex; setting
+   annex-ignore` goes to **stdout**, so the capture swallowed it along with the
+   SHA, and `update-index --cacheinfo` then got `160000,<noise>\n<sha>,<path>`:
+
+   ```
+   error: option 'cacheinfo' expects <mode>,<sha1>,<path>
+   ```
+
+   A function whose return value is its stdout cannot tolerate any other
+   command inside it writing there. Split into `member_push` (diagnostics only)
+   and `member_sha`.
+2. **The scratch tree could not be removed.** git-annex makes its object files
+   and their directories read-only, so the `EXIT` trap's `rm -rf` failed with
+   `Permission denied`. It now does `chmod -R u+w` first.
+3. **git-annex probed the HTTPS remote** and reported
+   `<url>/config download failed: Unauthorized`. Harmless but alarming, and
+   pointless because aneksajo cannot take content over HTTPS anyway. The
+   populator now sets `remote.origin.annex-ignore` itself.
+
+Member refs are also force-pushed now, so a re-run resets the demo instead of
+failing on non-fast-forward against a half-populated repository. `main` is
+still guarded, with `FORCE=1` to override.
+
 ### Running the populator yourself
 
 It needs nothing but a push URL, so it can be run from anywhere credentials
