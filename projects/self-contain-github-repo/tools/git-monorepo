@@ -22,8 +22,11 @@ living in the same repo, sharing its object store and its access control.
 from __future__ import annotations
 
 import argparse
+import os
+import shutil
 import subprocess
 import sys
+import tempfile
 
 NS = "refs/namespaces"
 
@@ -160,6 +163,181 @@ def cmd_attach(a):
     print(f"attached {a.namespace} at {a.path} ({sha[:8]}), url={rel}")
 
 
+
+# ---------------------------------------------------------------- import
+
+ANNEX_MIN_DEFAULT = 64 * 1024
+
+
+def _run_git(dest, *args, **kw):
+    return git(*args, cwd=dest, **kw)
+
+
+def _init_member(dest, branch, annex_name):
+    os.makedirs(dest, exist_ok=True)
+    git("init", "-q", "-b", branch, dest)
+    git("config", "commit.gpgsign", "false", cwd=dest)
+    git("config", "push.negotiate", "false", cwd=dest)
+    git("annex", "init", "-q", annex_name, cwd=dest, check=False)
+
+
+def _add_payload(dest, src_dir, annex_min, subdir_names):
+    """Copy this level's own files in, annexing the big ones."""
+    small, large = [], []
+    for name in sorted(os.listdir(src_dir)):
+        if name == ".git" or name in subdir_names:
+            continue
+        srcp = os.path.join(src_dir, name)
+        if os.path.isdir(srcp):            # a directory we are NOT splitting out
+            for root, _, files in os.walk(srcp):
+                for f in files:
+                    full = os.path.join(root, f)
+                    rel = os.path.relpath(full, src_dir)
+                    (large if os.path.getsize(full) >= annex_min else small).append(rel)
+        elif os.path.isfile(srcp):
+            (large if os.path.getsize(srcp) >= annex_min else small).append(name)
+    for rel in small + large:
+        dstp = os.path.join(dest, rel)
+        os.makedirs(os.path.dirname(dstp), exist_ok=True)
+        shutil.copy2(os.path.join(src_dir, rel), dstp)
+    if small:
+        git("add", "--", *small, cwd=dest)
+        git("commit", "-qm", f"{len(small)} small file(s) kept in git", cwd=dest,
+            check=False)
+    if large:
+        git("annex", "add", "--quiet", "--", *large, cwd=dest, check=False)
+        git("commit", "-qm", f"{len(large)} large file(s) under git-annex", cwd=dest,
+            check=False)
+    return len(small), len(large)
+
+
+def is_ssh_url(url):
+    """True for ssh:// and scp-style host:path, false for http(s)."""
+    if url.startswith(("http://", "https://")):
+        return False
+    return url.startswith("ssh://") or (":" in url and "//" not in url)
+
+
+def _push_member(url, namespace, dest, branch, annexed):
+    """Push a member's content branch into its namespace.
+
+    The git-annex branch is shared: it goes to the repository's canonical
+    refs/heads/git-annex, union-merged first, because git-annex-shell on an
+    aneksajo forge records location state in exactly that ref and every
+    member's annex branch is an independent root.
+
+    Annex *content* only moves over SSH. Forgejo-aneksajo serves it read-only
+    over HTTPS, so git-annex marks such a remote annex-ignore and a copy is
+    impossible. Over an https url the content therefore stays where it already
+    is -- which, during an import, is a scratch directory about to be deleted.
+    cmd_import warns about that; this returns whether a copy happened.
+    """
+    prefix = ns_prefix(namespace)
+    dst = f"{prefix}/refs/heads/{branch}"
+    if not annexed:
+        git("push", "-q", url, f"+{branch}:{dst}", cwd=dest)
+        return git("rev-parse", branch, cwd=dest), False
+
+    ssh = is_ssh_url(url)
+    git("remote", "add", "origin", url, cwd=dest, check=False)
+    git("remote", "set-url", "origin", url, cwd=dest, check=False)
+    if not ssh:
+        git("config", "remote.origin.annex-ignore", "true", cwd=dest, check=False)
+    git("fetch", "-q", "origin",
+        "+refs/heads/git-annex:refs/remotes/origin/git-annex", cwd=dest,
+        check=False)
+    if git("rev-parse", "-q", "--verify", "refs/remotes/origin/git-annex",
+           cwd=dest, check=False):
+        git("annex", "merge", cwd=dest, check=False)
+    git("push", "-q", url, f"+{branch}:{dst}",
+        "git-annex:refs/heads/git-annex", cwd=dest)
+    if not ssh:
+        return git("rev-parse", branch, cwd=dest), False
+
+    # content first, then re-push the annex branch so the forge's location log
+    # records the copy that just landed
+    git("annex", "copy", "--quiet", "--to", "origin", cwd=dest, check=False)
+    git("fetch", "-q", "origin",
+        "+refs/heads/git-annex:refs/remotes/origin/git-annex", cwd=dest,
+        check=False)
+    git("annex", "merge", cwd=dest, check=False)
+    git("push", "-q", url, "git-annex:refs/heads/git-annex", cwd=dest, check=False)
+    return git("rev-parse", branch, cwd=dest), True
+
+
+def _import_tree(a, src_dir, namespace, depth, work):
+    """Depth-first: children become members first, then this level links them."""
+    dest = os.path.join(work, namespace.replace("/", "__") or "__root__")
+    children = sorted(d for d in os.listdir(src_dir)
+                      if os.path.isdir(os.path.join(src_dir, d)) and d != ".git")
+    split = children if depth > 0 else []
+
+    kids = []
+    for name in split:
+        child_ns = f"{namespace}/{name}" if namespace else name
+        sha = _import_tree(a, os.path.join(src_dir, name), child_ns, depth - 1, work)
+        kids.append((name, child_ns, sha))
+
+    _init_member(dest, a.branch, namespace.replace("/", "-") or "root")
+    n_small, n_large = _add_payload(dest, src_dir, a.annex_min, set(split))
+
+    if kids:
+        depth_from_root = namespace.count("/") + 1 if namespace else 0
+        rel_up = "../" * (depth_from_root + 1)
+        repo_file = a.url.rstrip("/").rpartition("/")[2]
+        lines = []
+        for name, child_ns, sha in kids:
+            lines.append(f'[submodule "{name}"]\n\tpath = {name}\n'
+                         f"\turl = {rel_up}{repo_file}\n\tbranch = {a.branch}\n"
+                         f"\tmonorepo-namespace = {child_ns}\n")
+            git("update-index", "--add", "--cacheinfo", f"160000,{sha},{name}",
+                cwd=dest)
+        with open(os.path.join(dest, ".gitmodules"), "w") as fh:
+            fh.write("".join(lines))
+        git("add", ".gitmodules", cwd=dest)
+        git("commit", "-qm", f"attach {len(kids)} member(s) as submodules", cwd=dest)
+
+    sha, uploaded = _push_member(a.url, namespace, dest, a.branch, n_large > 0)
+    note = (" content->forge" if uploaded
+            else "  *** CONTENT NOT UPLOADED ***" if n_large else "")
+    print(f"  {namespace or '(root)':<28} {sha[:12]}  "
+          f"{n_small} in git, {n_large} annexed, {len(kids)} submodule(s){note}")
+    return sha
+
+
+def cmd_import(a):
+    """Turn a directory tree into a hierarchy of members under <namespace>."""
+    src = os.path.abspath(a.directory)
+    if not os.path.isdir(src):
+        sys.exit(f"not a directory: {src}")
+    work = tempfile.mkdtemp(prefix="git-monorepo-")
+    try:
+        print(f"importing {src} -> namespace {a.namespace} "
+              f"(depth {a.depth}, annex >= {a.annex_min} bytes)")
+        if not is_ssh_url(a.url):
+            print("WARNING: http(s) url. Forgejo-aneksajo serves annex content\n"
+                  "         read-only over HTTPS, so content CANNOT be uploaded.\n"
+                  "         Members will carry annex pointers whose content exists\n"
+                  "         nowhere once this import's scratch tree is removed.\n"
+                  "         Use an ssh:// url to upload content.\n")
+        root_sha = _import_tree(a, src, a.namespace, a.depth, work)
+        print(f"\nroot member {a.namespace} = {root_sha}")
+        print("attach it to the project with:")
+        print(f"  git-monorepo attach {a.url} {a.namespace} <path> "
+              f"--commit {root_sha}")
+    finally:
+        # git-annex makes its object files read-only; chmod before removing
+        for root, dirs, files in os.walk(work):
+            for d in dirs:
+                os.chmod(os.path.join(root, d), 0o755)
+            for f in files:
+                try:
+                    os.chmod(os.path.join(root, f), 0o644)
+                except OSError:
+                    pass
+        shutil.rmtree(work, ignore_errors=True)
+
+
 def main():
     p = argparse.ArgumentParser(prog="git-monorepo", description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -181,6 +359,15 @@ def main():
     s.add_argument("directory", nargs="?", default=".")
     s.add_argument("refs", nargs="*")
     s.set_defaults(fn=cmd_push)
+
+    s = sub.add_parser("import", help="import a directory tree as nested members")
+    s.add_argument("url"); s.add_argument("namespace"); s.add_argument("directory")
+    s.add_argument("--depth", type=int, default=2,
+                   help="how many directory levels become their own members "
+                        "(default 2: e.g. year/ and month/ for tinuous logs)")
+    s.add_argument("--annex-min", type=int, default=ANNEX_MIN_DEFAULT,
+                   dest="annex_min", help="files this size or larger go to git-annex")
+    s.set_defaults(fn=cmd_import)
 
     s = sub.add_parser("attach", help="add a member as a submodule here")
     s.add_argument("url"); s.add_argument("namespace"); s.add_argument("path")

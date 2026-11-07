@@ -122,6 +122,7 @@ cat > logs/index.json <<'EOF'
 EOF
 $G add logs/index.json; $G commit -qm "2025 run index (small, stays in git)"
 annex_from_url logs/run-9001.log https://raw.githubusercontent.com/git/git/master/README.md
+annex_from_url logs/run-9001.err https://raw.githubusercontent.com/datalad/datalad/maint/CONTRIBUTING.md
 $G commit -qm "annexed CI log for run 9001"
 member_push "$D" tinuous/2025 --annex; SHA_2025=$(member_sha "$D")
 echo "   $SHA_2025"
@@ -152,11 +153,15 @@ A member repository of \`$BASENAME\`, living in the \`tinuous\` namespace.
 It holds one member per year, each with its CI logs under git-annex.
 EOF
 $G add README.md; $G commit -qm "tinuous archive root"
+git annex init -q "tinuous-root" >/dev/null 2>&1
+mkdir -p summary
+annex_from_url summary/all-runs.tsv https://raw.githubusercontent.com/git/git/master/COPYING
+$G commit -qm "annexed cross-year run summary"
 { gitmodule 2025 2025 tinuous/2025 2; gitmodule 2026 2026 tinuous/2026 2; } > .gitmodules
 $G update-index --add --cacheinfo 160000,"$SHA_2025",2025
 $G update-index --add --cacheinfo 160000,"$SHA_2026",2026
 $G add .gitmodules; $G commit -qm "attach 2025 and 2026 as submodules"
-member_push "$D" tinuous; SHA_TIN=$(member_sha "$D")
+member_push "$D" tinuous --annex; SHA_TIN=$(member_sha "$D")
 echo "   $SHA_TIN"
 
 ############################################################ issues
@@ -195,7 +200,12 @@ pathlib.Path("issues/README.md").write_text(
     "same namespace.\n")
 PY
 $G add issues; $G commit -qm "issue export as flat JSON"
-member_push "$D" issues; SHA_ISS=$(member_sha "$D")
+git annex init -q "issues-export" >/dev/null 2>&1
+mkdir -p issues/attachments
+annex_from_url issues/attachments/thread-dump.txt \
+  https://raw.githubusercontent.com/python/cpython/main/README.rst
+$G commit -qm "annexed issue attachment"
+member_push "$D" issues --annex; SHA_ISS=$(member_sha "$D")
 echo "   $SHA_ISS"
 
 ############################################################ the project

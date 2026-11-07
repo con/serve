@@ -391,6 +391,81 @@ Member refs are also force-pushed now, so a re-run resets the demo instead of
 failing on non-fast-forward against a half-populated repository. `main` is
 still guarded, with `FORCE=1` to override.
 
+### Importing an existing tree: `git-monorepo import`
+
+The demo is hand-built, but the real case is an existing directory tree --
+con/tinuous output for a project, organised `<year>/<month>/<run>/`. `import`
+turns such a tree into a nested hierarchy of members in one repository:
+
+```bash
+git-monorepo import ssh://git@forge/owner/dandi-cli.git tinuous ./tinuous-dandi-cli \
+    --depth 2 --annex-min 65536
+```
+
+`--depth 2` makes the first two directory levels (`<year>/` and `<month>/`)
+members of their own; everything below stays as ordinary directories inside
+the month member. Files at or above `--annex-min` go to git-annex, smaller
+ones stay in git. Each level gets a `.gitmodules` naming its children, and the
+root member's SHA is printed so it can be attached to the project with
+`git-monorepo attach`.
+
+A 31-file, 2.4M tree imported as:
+
+```
+tinuous/2024/01    5 in git, 2 annexed, 0 submodule(s) content->forge
+tinuous/2024/02    5 in git, 2 annexed, 0 submodule(s) content->forge
+tinuous/2024       1 in git, 0 annexed, 2 submodule(s)
+tinuous/2025/01    5 in git, 2 annexed, 0 submodule(s) content->forge
+tinuous/2025/02    5 in git, 2 annexed, 0 submodule(s) content->forge
+tinuous/2025       1 in git, 0 annexed, 2 submodule(s)
+tinuous            1 in git, 0 annexed, 2 submodule(s)
+```
+
+**The url must be `ssh://` for the content to go anywhere.** Annex content is
+read-only over HTTPS on aneksajo, so over an https url the import pushes
+pointers whose content then exists nowhere, because the import's scratch tree
+is deleted at the end. That was a real bug in the first version of this
+command; it now uploads over SSH and prints `*** CONTENT NOT UPLOADED ***`
+per member otherwise, with a warning up front.
+
+### How it partitions
+
+Annexed content sits at every level of the demo, so the split is visible:
+
+| Member | Annexed file |
+| --- | --- |
+| `(main)` | `data/sample.dat` |
+| `tinuous` | `summary/all-runs.tsv` |
+| `tinuous/2025` | `logs/run-9001.log`, `logs/run-9001.err` |
+| `tinuous/2026` | `logs/run-9101.log`, `logs/run-9102.log` |
+| `issues` | `issues/attachments/thread-dump.txt` |
+
+Each member's working tree holds only its own files, and fetching one brings
+only its own history. What is shared is underneath: one git object store, one
+annex object store, and one `refs/heads/git-annex` whose `uuid.log` lists
+every member:
+
+```
+13768e3c-...  tinuous-2026
+8087c970-...  tinuous-2025
+c4bb46e3-...  demo-main
+d51b8f06-...  issues-export
+fed318c2-...  tinuous-root
+```
+
+One caveat on dedup across members. Identical bytes do **not** necessarily
+share an object: the default `SHA256E` backend puts the file's extension in
+the key, so the same content as `sample.dat` and as `run-9102.log` yields
+
+```
+SHA256E-s29809--0df26be0...cc2a58.dat
+SHA256E-s29809--0df26be0...cc2a58.log
+```
+
+-- same hash, different keys, stored twice. Dedup across members is real only
+where the extensions match, or with a plain `SHA256` backend
+(`git annex config --set annex.backend SHA256`).
+
 ### Running the populator yourself
 
 It needs nothing but a push URL, so it can be run from anywhere credentials
