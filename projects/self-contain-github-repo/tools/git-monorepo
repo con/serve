@@ -103,13 +103,13 @@ def cmd_clone(a):
     git("config", f"branch.{a.branch}.remote", "origin", cwd=dest)
     git("config", f"branch.{a.branch}.merge", f"refs/heads/{a.branch}", cwd=dest)
 
-    # The member's git-annex branch lives in one of two places, and which one
-    # depends on the deployment (see the project README): inside the member's
-    # own namespace when the forge is plain git storage, or at the repository's
-    # canonical refs/heads/git-annex when the forge stores annex content and
-    # members share it. Either way git-annex itself only ever looks at a local
-    # refs/heads/git-annex, so fetch whichever exists straight into that name --
-    # otherwise `git annex init` makes an empty one and every pointer dangles.
+    # The member's git-annex branch lives in one of two places: inside the
+    # member's own namespace, or at the repository's canonical
+    # refs/heads/git-annex when members share it (the usual case). Fetch
+    # whichever exists into the REMOTE-TRACKING ref and stop there -- git-annex
+    # merges it into its own branch on `git annex init`/`sync`. Writing
+    # refs/heads/git-annex directly would be maintaining that branch by hand,
+    # which is git-annex's job.
     remote_refs = {line.split("\t")[-1]
                    for line in git("ls-remote", a.url).splitlines() if line}
     annex_src = next((r for r in (f"{prefix}/refs/heads/git-annex",
@@ -117,7 +117,7 @@ def cmd_clone(a):
                      None)
     if annex_src:
         git("config", "--add", "remote.origin.fetch",
-            f"+{annex_src}:refs/heads/git-annex", cwd=dest)
+            f"+{annex_src}:refs/remotes/origin/git-annex", cwd=dest)
         git("fetch", "-q", "origin", cwd=dest)
         # so `git annex get` can reach content the forge holds
         annex_url = None if is_ssh_url(a.url) else p2phttp_url(a.url)
@@ -125,8 +125,8 @@ def cmd_clone(a):
             git("config", "remote.origin.annexUrl", annex_url, cwd=dest,
                 check=False)
         where = "its own namespace" if annex_src.startswith(prefix) else "the shared branch"
-        print(f"note: git-annex branch fetched from {where}; "
-              f"run `git annex init` in {dest}")
+        print(f"note: git-annex branch available from {where}; "
+              f"run `git annex init` in {dest} and git-annex will merge it")
     print(f"cloned {a.namespace} -> {dest} (mode={a.mode})")
 
 
@@ -243,37 +243,20 @@ def p2phttp_url(url):
     return f"annex+{parts.scheme}://{parts.netloc}/git-annex-p2phttp/git-annex/"
 
 
-def _push_annex_branch(url, dest, tries=3):
-    """Push the shared refs/heads/git-annex, re-merging on rejection.
-
-    It is a moving target: every member adds to it, and the forge appends to it
-    when content lands, so our local tip is not reliably a fast-forward by the
-    time we push. Union-merge what is there and try again.
-    """
-    for _ in range(tries):
-        p = subprocess.run(["git", "push", "-q", url,
-                            "git-annex:refs/heads/git-annex"],
-                           cwd=dest, capture_output=True, text=True)
-        if p.returncode == 0:
-            return True
-        git("fetch", "-q", "origin",
-            "+refs/heads/git-annex:refs/remotes/origin/git-annex", cwd=dest,
-            check=False)
-        git("annex", "merge", cwd=dest, check=False)
-    print("  WARNING: could not push the shared git-annex branch", file=sys.stderr)
-    return False
-
-
 def _push_member(url, namespace, dest, branch, annexed):
     """Push a member's content branch into its namespace, and its content.
 
-    The git-annex branch is shared: it goes to the repository's canonical
-    refs/heads/git-annex, union-merged first, because git-annex-shell records
-    location state in exactly that ref and every member's annex branch is an
-    independent root.
+    The git-annex branch is shared by every member and belongs to git-annex:
+    `git annex sync` fetches, merges and pushes it. Never touch that branch by
+    hand. Earlier versions of this did -- a `git annex merge` plus a manual
+    push, with a retry loop bolted on when the pushes kept being rejected --
+    which is a reimplementation of sync, and a worse one.
 
-    Content travels over SSH via git-annex-shell, or over HTTP(S) via the
-    forge's P2P-HTTP endpoint once annexUrl points at it.
+    sync also honours remote.<name>.push, so the content branch lands in this
+    member's namespace rather than on refs/heads/<branch>, and it pushes the
+    content branch and the annex branch separately, which is what an empty
+    repository requires: sending both in one push makes the forge reject the
+    annex branch with "reference already exists".
     """
     prefix = ns_prefix(namespace)
     dst = f"{prefix}/refs/heads/{branch}"
@@ -286,25 +269,13 @@ def _push_member(url, namespace, dest, branch, annexed):
     annex_url = None if is_ssh_url(url) else p2phttp_url(url)
     if annex_url:
         git("config", "remote.origin.annexUrl", annex_url, cwd=dest, check=False)
-    git("fetch", "-q", "origin",
-        "+refs/heads/git-annex:refs/remotes/origin/git-annex", cwd=dest,
-        check=False)
-    if git("rev-parse", "-q", "--verify", "refs/remotes/origin/git-annex",
-           cwd=dest, check=False):
-        git("annex", "merge", cwd=dest, check=False)
-    # Two pushes, deliberately. Sending the namespaced content branch and
-    # refs/heads/git-annex in ONE push to an *empty* repository makes the forge
-    # reject the annex branch with "reference already exists", while the content
-    # branch succeeds. Separately they both go through.
-    git("push", "-q", url, f"+{branch}:{dst}", cwd=dest)
-    _push_annex_branch(url, dest)
+    git("config", "remote.origin.push", f"+refs/heads/{branch}:{dst}", cwd=dest)
 
-    # content, then re-push the annex branch so the forge's location log
-    # records the copy that just landed
+    git("annex", "sync", "--no-content", "origin", cwd=dest, check=False)
     git("annex", "copy", "--quiet", "--to", "origin", cwd=dest, check=False)
-    present = git("annex", "find", "--in", "origin", cwd=dest, check=False)
-    uploaded = bool(present.strip())
-    _push_annex_branch(url, dest)
+    uploaded = bool(git("annex", "find", "--in", "origin", cwd=dest,
+                        check=False).strip())
+    git("annex", "sync", "--no-content", "origin", cwd=dest, check=False)
     return git("rev-parse", branch, cwd=dest), uploaded
 
 

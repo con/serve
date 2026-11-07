@@ -391,21 +391,50 @@ through `git-annex-shell`; it is simply not required.
 Both `git-monorepo` and `populate-demo-repo.sh` now set `annexUrl`
 themselves.
 
-### An empty repository needs two pushes
+### Leave the git-annex branch to git-annex
 
-A member's content branch and `refs/heads/git-annex` cannot go in the *same*
-push to an **empty** repository: the content branch is accepted and the annex
-branch is rejected with
+Earlier versions of these tools maintained the shared `refs/heads/git-annex`
+by hand: `git annex merge`, then a manual `git push` of that branch, then a
+retry loop when the pushes kept being rejected as non-fast-forwards. That is a
+reimplementation of `git annex sync`, and a worse one -- the branch is a
+moving target, since every member adds to it and the forge appends to it when
+content lands.
 
+**The git-annex branch belongs to git-annex.** `git annex sync` fetches,
+merges and pushes it, and other commands maintain it as they go. Both tools
+now call
+
+```bash
+git config remote.origin.push '+refs/heads/main:<namespace>/refs/heads/main'
+git annex sync --no-content origin
 ```
- ! [remote rejected] git-annex -> git-annex (reference already exists)
+
+and never touch the branch themselves. Two things fall out of that for free:
+
+- sync honours `remote.<name>.push`, so the member's content branch still
+  lands in its namespace rather than on `refs/heads/main`;
+- sync pushes the content branch and the annex branch as **separate** pushes,
+  which an empty repository requires. Sending both in one push makes the forge
+  reject the annex branch with `[remote rejected] git-annex (reference already
+  exists)` even though `ls-remote` shows no refs at all. That failure, and the
+  retry loop added to paper over it, both disappeared with sync.
+
+A member clone likewise fetches the shared branch only to
+`refs/remotes/origin/git-annex` and stops; `git annex init` merges it.
+
+### The demo now stores its content on the forge
+
+`populate-demo-repo.sh` copies annexed content to the forge over P2P-HTTP
+after each member is pushed, so the repository is self-contained rather than
+depending on the public URLs. Verified end to end: seven objects in the
+forge's annex store, and a member clone fetching them with
+
+```console
+git annex get --from origin logs/
 ```
 
-even though `ls-remote` shows the repository has no refs at all. Pushed
-separately, both succeed. Once the repository is non-empty a combined push is
-fine, which is why this only shows up on the very first member and made the
-first import of a fresh repository fail after writing one member. Both tools
-now always push the two refs separately.
+Content stays registered against its public URLs as well, so a clone has two
+sources and still works if the forge is unreachable.
 
 ### Running the populator yourself
 

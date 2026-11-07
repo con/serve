@@ -58,55 +58,50 @@ ns_prefix() {  # a/b/c -> refs/namespaces/a/refs/namespaces/b/refs/namespaces/c
 }
 say() { printf '\n== %s\n' "$*"; }
 
-# Push a member's content branch into its own namespace. With --annex, the
-# member's git-annex branch also goes to the SHARED refs/heads/git-annex -- and
-# because each member's annex branch is an independent root, the shared ref has
-# to be union-merged first or every push after the first is rejected as a
-# non-fast-forward. `git annex merge` is what performs that union merge.
+# Push a member's content branch into its own namespace, and its annexed
+# content to the forge. The git-annex branch is shared across all members and
+# is left entirely to `git annex sync`.
 member_push() {           # member_push <dir> <namespace|""> [--annex]
-  local dir=$1 ns=$2 annex=${3:-} dst
-  local lead=""
+  local dir=$1 ns=$2 annex=${3:-} dst lead=""
   if [ -z "$ns" ]; then dst=refs/heads/main; lead=$MAIN_LEAD
   else dst="$(ns_prefix "$ns")/refs/heads/main"; lead="+"; fi
-  if [ -n "$annex" ]; then
-    $G -C "$dir" remote add origin "$PUSH" 2>/dev/null || \
-      $G -C "$dir" remote set-url origin "$PUSH"
-    # absent on the first member, hence the guard
-    # Point git-annex at the forge's P2P-HTTP endpoint. Without this it probes
-    # <url>/config, finds no usable annex remote and sets annex-ignore, which
-    # looks like the forge refusing content over HTTPS. It is not: aneksajo
-    # serves the git-annex P2P protocol at the server root.
-    P2P=$(printf '%s' "$PUSH" | sed -E 's|^(https?)://([^/]+)/.*|annex+\1://\2/git-annex-p2phttp/git-annex/|')
-    case "$P2P" in annex+http*) $G -C "$dir" config remote.origin.annexUrl "$P2P";; esac
-    $G -C "$dir" fetch -q origin '+refs/heads/git-annex:refs/remotes/origin/git-annex' 2>/dev/null || true
-    if $G -C "$dir" rev-parse -q --verify refs/remotes/origin/git-annex >/dev/null; then
-      git -C "$dir" -c commit.gpgsign=false annex merge >/dev/null 2>&1
-    fi
-    # two pushes: sending the content branch and refs/heads/git-annex together
-    # to an EMPTY repository makes the forge reject the annex branch with
-    # "reference already exists"; separately they both go through
-    $G -C "$dir" push -q "$PUSH" "$lead$(echo main):$dst"
-    # The shared annex branch is a moving target: every member adds to it, and
-    # the forge appends to it too when content lands. Re-merge and retry rather
-    # than assume our local tip is still a fast-forward.
-    local ok=
-    for _ in 1 2 3; do
-      if $G -C "$dir" push -q "$PUSH" "git-annex:refs/heads/git-annex" 2>/dev/null; then ok=1; break; fi
-      $G -C "$dir" fetch -q origin '+refs/heads/git-annex:refs/remotes/origin/git-annex' 2>/dev/null || true
-      git -C "$dir" -c commit.gpgsign=false annex merge >/dev/null 2>&1 || true
-    done
-    [ -n "$ok" ] || { echo "   WARNING: could not push the shared git-annex branch" >&2; }
-  else
-    $G -C "$dir" push -q "$PUSH" "$lead$(echo main):$dst"
+
+  if [ -z "$annex" ]; then
+    $G -C "$dir" push -q "$PUSH" "${lead}refs/heads/main:$dst"
+    return
   fi
+
+  $G -C "$dir" remote add origin "$PUSH" 2>/dev/null || \
+    $G -C "$dir" remote set-url origin "$PUSH"
+
+  # Point git-annex at the forge's P2P-HTTP endpoint. Without this it probes
+  # <url>/config, finds no usable annex remote and sets annex-ignore -- which
+  # looks like the forge refusing content over HTTP. It is not: aneksajo serves
+  # the git-annex P2P protocol at the instance root.
+  local p2p
+  p2p=$(printf '%s' "$PUSH" | sed -E 's|^(https?)://([^/]+)/.*|annex+\1://\2/git-annex-p2phttp/git-annex/|')
+  case "$p2p" in annex+http*) $G -C "$dir" config remote.origin.annexUrl "$p2p";; esac
+
+  # The content branch must land in this member's namespace, not on
+  # refs/heads/main, so tell the remote where pushes go and let git-annex drive.
+  $G -C "$dir" config remote.origin.push "${lead}refs/heads/main:$dst"
+
+  # `git annex sync` owns the git-annex branch: it fetches, merges and pushes
+  # it itself. Never merge or push that branch by hand -- git-annex maintains
+  # it, and doing it manually is how the earlier versions of this script ended
+  # up fighting non-fast-forwards on every member after the first.
+  git -C "$dir" -c commit.gpgsign=false annex sync --no-content origin >/dev/null 2>&1
+
+  # content to the forge, then sync again so the location log records it
+  git -C "$dir" annex copy --quiet --to origin >/dev/null 2>&1 || true
+  git -C "$dir" -c commit.gpgsign=false annex sync --no-content origin >/dev/null 2>&1
 }
 
-# member_push writes only diagnostics, never a value, so compute the SHA with a
+# member_push writes only diagnostics, never a value, so read the SHA with a
 # separate call. Returning it through stdout was a real bug: git-annex prints
 # "Remote origin not usable by git-annex" to stdout on some versions, and
 # $(member_push ...) swallowed that into the SHA, which then reached
-# `update-index --cacheinfo` as "160000,<noise>\n<sha>,<path>" and failed with
-#   error: option 'cacheinfo' expects <mode>,<sha1>,<path>
+# `update-index --cacheinfo` as "160000,<noise>\n<sha>,<path>".
 member_sha() { $G -C "$1" rev-parse main; }
 
 # .gitmodules entry. The forge cannot serve a namespace at its own URL, so the
