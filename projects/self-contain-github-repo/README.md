@@ -436,6 +436,51 @@ git annex get --from origin logs/
 Content stays registered against its public URLs as well, so a clone has two
 sources and still works if the forge is unreachable.
 
+### On GitHub: `LAYOUT=branches`
+
+The namespace layout still cannot be exercised against GitHub from here --
+this session's git proxy permits pushes only to `refs/heads/*`, and an
+ordinary **tag** gets the same 403 as a custom ref, so the probe's controls
+fail and its result is void. That is the proxy, not GitHub.
+
+What does work on GitHub is the fallback: `LAYOUT=branches` puts each member
+on an ordinary branch, `m/<namespace>/main`. Pushed to
+`con/serve-monorepo-dev` and verified:
+
+| Check | Result |
+| --- | --- |
+| members pushed | `m/tinuous/main`, `m/tinuous/2025/main`, `m/tinuous/2026/main`, `m/issues/main` |
+| `git submodule update --init --recursive` | **works natively**, all three levels, no helper |
+| annexed pointers | present at every level, content retrieved from the recorded URLs |
+| plain clone | 224K |
+
+Native submodule resolution is the real advantage here: the gitlink commits
+are reachable from `refs/heads/*`, so stock git walks the hierarchy with no
+tooling at all. The price is the one measured earlier -- members are ordinary
+branches, so every clone fetches them and the branch list fills up (15 refs in
+that repository now).
+
+Three bugs surfaced only once this ran against a second forge:
+
+1. **`git annex sync` was eating the submodules.** By default sync commits
+   outstanding working-tree changes first. A member's submodules are gitlinks
+   added with `update-index --cacheinfo` and have no directory on disk, so
+   sync read them as deletions and committed that -- stripping every submodule
+   from the tree it had just been told to publish. `--no-commit` fixes it.
+2. **`git annex sync` was merging the wrong branch.** sync pulls as well as
+   pushes, and merges the remote branch of the same name into the current one.
+   Against a repository that already had an unrelated `refs/heads/main` it
+   died with `refusing to merge unrelated histories`, exit 1, taking the run
+   with it. Restricting `remote.origin.fetch` to
+   `+refs/heads/git-annex:refs/remotes/origin/git-annex` leaves sync exactly
+   the one branch it is supposed to merge.
+3. **Relative submodule URLs scaled with depth.** git resolves a submodule's
+   relative url against its *immediate superproject's* url, not against how
+   deep the path is -- and every member here has the same repository url. The
+   `../../` at level two ate the owner
+   (`.../con/repo.git` + `../../repo.git` -> `.../repo.git`) and nested
+   submodules failed to clone. It is one `../` at every level.
+
 ### Running the populator yourself
 
 It needs nothing but a push URL, so it can be run from anywhere credentials

@@ -51,6 +51,25 @@ EOM
 fi
 MAIN_LEAD=""; [ "${FORCE:-0}" = 1 ] && MAIN_LEAD="+"
 
+# LAYOUT=namespaces (default) stores members under refs/namespaces/, which
+# keeps them out of a plain clone but needs a forge that accepts refs outside
+# refs/heads/ and refs/tags/.
+#
+# LAYOUT=branches stores each member on an ordinary branch, m/<namespace>/main.
+# It works on any forge, GitHub included, and `git submodule update` resolves
+# natively because the gitlink commits are reachable from refs/heads/*. The
+# price is that members are advertised to every clone and clutter the branch
+# list. Note the trailing /main: a member may not sit at a prefix of another
+# member's path, or git refuses the ref with a directory/file conflict
+# ("cannot lock ref refs/heads/m/tinuous: refs/heads/m/tinuous/2025/main
+# exists").
+LAYOUT=${LAYOUT:-namespaces}
+
+member_ref() {  # member_ref <namespace> -> the full ref its main lives at
+  if [ "$LAYOUT" = branches ]; then echo "refs/heads/m/$1/main"
+  else echo "$(ns_prefix "$1")/refs/heads/main"; fi
+}
+
 ns_prefix() {  # a/b/c -> refs/namespaces/a/refs/namespaces/b/refs/namespaces/c
   local out=""; local IFS=/
   for p in $1; do out="$out/refs/namespaces/$p"; done
@@ -64,7 +83,7 @@ say() { printf '\n== %s\n' "$*"; }
 member_push() {           # member_push <dir> <namespace|""> [--annex]
   local dir=$1 ns=$2 annex=${3:-} dst lead=""
   if [ -z "$ns" ]; then dst=refs/heads/main; lead=$MAIN_LEAD
-  else dst="$(ns_prefix "$ns")/refs/heads/main"; lead="+"; fi
+  else dst="$(member_ref "$ns")"; lead="+"; fi
 
   if [ -z "$annex" ]; then
     $G -C "$dir" push -q "$PUSH" "${lead}refs/heads/main:$dst"
@@ -78,23 +97,45 @@ member_push() {           # member_push <dir> <namespace|""> [--annex]
   # <url>/config, finds no usable annex remote and sets annex-ignore -- which
   # looks like the forge refusing content over HTTP. It is not: aneksajo serves
   # the git-annex P2P protocol at the instance root.
-  local p2p
-  p2p=$(printf '%s' "$PUSH" | sed -E 's|^(https?)://([^/]+)/.*|annex+\1://\2/git-annex-p2phttp/git-annex/|')
+  # Only Forgejo-aneksajo serves this endpoint. Pointing a client at it on a
+  # forge that does not (GitHub) would just make `git annex get` fail oddly, so
+  # derive it only when the host plausibly has it. ANNEX_P2PHTTP=0 disables.
+  local p2p host
+  host=$(printf '%s' "$PUSH" | sed -E 's|^https?://([^/@]*@)?([^/:]+).*|\2|')
+  case "${ANNEX_P2PHTTP:-auto}:$host" in
+    0:*|*:github.com|*:gitlab.com|*:bitbucket.org) p2p="" ;;
+    *) p2p=$(printf '%s' "$PUSH" | sed -E 's|^(https?)://([^/]+)/.*|annex+\1://\2/git-annex-p2phttp/git-annex/|') ;;
+  esac
   case "$p2p" in annex+http*) $G -C "$dir" config remote.origin.annexUrl "$p2p";; esac
 
   # The content branch must land in this member's namespace, not on
   # refs/heads/main, so tell the remote where pushes go and let git-annex drive.
   $G -C "$dir" config remote.origin.push "${lead}refs/heads/main:$dst"
 
+  # Restrict what sync can SEE. sync also pulls, and it merges the remote
+  # branch of the same name into the current one -- so with the default
+  # refspec it tries to merge the repository's refs/heads/main into this
+  # member's unrelated main and dies with "refusing to merge unrelated
+  # histories", taking the whole run with it. Fetching only the shared annex
+  # branch leaves sync with exactly the one branch it is supposed to merge.
+  $G -C "$dir" config remote.origin.fetch '+refs/heads/git-annex:refs/remotes/origin/git-annex'
+
   # `git annex sync` owns the git-annex branch: it fetches, merges and pushes
   # it itself. Never merge or push that branch by hand -- git-annex maintains
   # it, and doing it manually is how the earlier versions of this script ended
   # up fighting non-fast-forwards on every member after the first.
-  git -C "$dir" -c commit.gpgsign=false annex sync --no-content origin >/dev/null 2>&1
+  #
+  # --no-commit is load-bearing. By default sync commits outstanding working
+  # tree changes first, and a member's submodules are gitlinks added with
+  # `update-index --cacheinfo` with no directory on disk -- so sync saw them as
+  # deletions and committed those, silently stripping every submodule from the
+  # tree it had just been asked to publish.
+  local SY="annex sync --no-commit --no-content origin"
+  git -C "$dir" -c commit.gpgsign=false $SY >/dev/null 2>&1
 
   # content to the forge, then sync again so the location log records it
   git -C "$dir" annex copy --quiet --to origin >/dev/null 2>&1 || true
-  git -C "$dir" -c commit.gpgsign=false annex sync --no-content origin >/dev/null 2>&1
+  git -C "$dir" -c commit.gpgsign=false $SY >/dev/null 2>&1
 }
 
 # member_push writes only diagnostics, never a value, so read the SHA with a
@@ -107,14 +148,20 @@ member_sha() { $G -C "$1" rev-parse main; }
 # .gitmodules entry. The forge cannot serve a namespace at its own URL, so the
 # url points back at this same repository and the namespace is recorded in a
 # monorepo-namespace key that tooling (git-monorepo) reads.
-gitmodule() {             # gitmodule <name> <path> <namespace> <depth>
-  local name=$1 path=$2 ns=$3 depth=$4 rel=""
-  local i; for ((i=0;i<depth;i++)); do rel="../$rel"; done
+gitmodule() {             # gitmodule <name> <path> <namespace> <unused>
+  local name=$1 path=$2 ns=$3 br=main
+  # Always one "../", at every level. git resolves a submodule's relative url
+  # against its IMMEDIATE superproject's url, not against how deep the path is
+  # -- and here every member's url is this same repository. Scaling the "../"
+  # with depth ate the owner at level two:
+  #   .../con/serve-monorepo-dev.git + ../../x.git -> .../x.git   (no owner)
+  local rel="../"
+  [ "$LAYOUT" = branches ] && br="m/$ns/main"
   cat <<EOF
 [submodule "$name"]
 	path = $path
 	url = ${rel}${BASENAME}.git
-	branch = main
+	branch = $br
 	monorepo-namespace = $ns
 EOF
 }

@@ -270,12 +270,25 @@ def _push_member(url, namespace, dest, branch, annexed):
     if annex_url:
         git("config", "remote.origin.annexUrl", annex_url, cwd=dest, check=False)
     git("config", "remote.origin.push", f"+refs/heads/{branch}:{dst}", cwd=dest)
+    # Restrict what sync can see: it pulls too, and merges the remote branch of
+    # the same name into the current one, so the default refspec makes it try
+    # to merge the repository's refs/heads/<branch> into this member's
+    # unrelated one and fail with "refusing to merge unrelated histories".
+    # Fetching only the shared annex branch leaves it the one branch it should
+    # merge.
+    git("config", "remote.origin.fetch",
+        "+refs/heads/git-annex:refs/remotes/origin/git-annex", cwd=dest)
 
-    git("annex", "sync", "--no-content", "origin", cwd=dest, check=False)
+    # --no-commit is load-bearing: by default sync commits outstanding working
+    # tree changes, and submodule gitlinks added with `update-index --cacheinfo`
+    # have no directory on disk, so sync reads them as deletions and commits
+    # those -- silently stripping every submodule from the published tree.
+    sync = ("annex", "sync", "--no-commit", "--no-content", "origin")
+    git(*sync, cwd=dest, check=False)
     git("annex", "copy", "--quiet", "--to", "origin", cwd=dest, check=False)
     uploaded = bool(git("annex", "find", "--in", "origin", cwd=dest,
                         check=False).strip())
-    git("annex", "sync", "--no-content", "origin", cwd=dest, check=False)
+    git(*sync, cwd=dest, check=False)
     return git("rev-parse", branch, cwd=dest), uploaded
 
 
@@ -296,8 +309,11 @@ def _import_tree(a, src_dir, namespace, depth, work):
     n_small, n_large = _add_payload(dest, src_dir, a.annex_min, set(split))
 
     if kids:
-        depth_from_root = namespace.count("/") + 1 if namespace else 0
-        rel_up = "../" * (depth_from_root + 1)
+        # One "../" at every level: git resolves a submodule's relative url
+        # against its immediate superproject's url, and every member here has
+        # the same repository url. Scaling it with depth drops path components
+        # (".../owner/repo.git" + "../../repo.git" -> ".../repo.git").
+        rel_up = "../"
         repo_file = a.url.rstrip("/").rpartition("/")[2]
         lines = []
         for name, child_ns, sha in kids:
