@@ -436,6 +436,50 @@ git annex get --from origin logs/
 Content stays registered against its public URLs as well, so a clone has two
 sources and still works if the forge is unreachable.
 
+### Settling the GitHub question yourself
+
+`tools/gh-ref-probe.sh` answers it in under a minute from anywhere push
+access works. It needs only git:
+
+```bash
+git clone -b claude/determined-feynman-ub6vnd https://github.com/con/serve
+cd serve/projects/self-contain-github-repo/tools
+./gh-ref-probe.sh https://github.com/<you>/<scratch-repo>
+```
+
+It pushes an ordinary branch and tag as **controls** first and refuses to
+report anything if either fails -- that is what caught the false negative from
+a sandbox whose proxy allowed only `refs/heads/*`. Then it pushes seven custom
+refs (a flat namespace, a 3-deep one, a namespace `HEAD`, a `git-annex`
+branch, `refs/bugs/`, `refs/notes/`, an arbitrary prefix), checks they can be
+fetched back by refspec and that a plain clone ignores them, prints a verdict,
+and deletes them again. Probe refs are uniquely named per run, so a leftover
+from an earlier run cannot poison the next one.
+
+Exit status is `0` accepted, `1` rejected, `2` inconclusive. Both branches are
+tested: against Forgejo-aneksajo 16.0.7 it reports
+
+```
+VERDICT: ACCEPTED -- the namespace layout works on this forge.
+```
+
+and against a proxy that blocks tag pushes it reports
+
+```
+VERDICT: INCONCLUSIVE.
+  A plain branch or tag could not be pushed, so this says nothing about
+  whether the forge accepts custom refs.
+```
+
+On ACCEPTED, build the real thing with `./populate-demo-repo.sh <push-url>
+<repo-basename>` against an empty repository. On REJECTED, the same script
+with `LAYOUT=branches`.
+
+One thing the probe cannot answer: whether GitHub keeps such refs through
+garbage collection, repository maintenance, forks and transfers. That needs
+time rather than a script -- push the refs, come back in a week, re-run
+`git ls-remote`.
+
 ### On GitHub: `LAYOUT=branches`
 
 The namespace layout still cannot be exercised against GitHub from here --
