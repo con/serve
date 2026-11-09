@@ -158,12 +158,17 @@ def cmd_attach(a):
                           f"{prefix}/refs/heads/{a.branch}").split("\t")[0]
     if not sha:
         sys.exit(f"no ref {prefix}/refs/heads/{a.branch} in {a.url}")
-    # relative URL keeps the whole hierarchy relocatable between forges
-    depth = a.path.count("/") + 1
-    rel = "../" * depth + f"~{a.namespace}/" + a.url.rstrip("/").rpartition("/")[2]
+    # One "../" plus this same repository's name, exactly as `import` and
+    # populate-demo-repo.sh write it: the member lives in a namespace of THIS
+    # repository, and git resolves a submodule's relative url against its
+    # immediate superproject's url. (This used to emit "../~<ns>/<repo>.git",
+    # a gateway convention from an early draft that only ns-http-server.py ever
+    # served -- on a real forge it 404s.)
+    rel = "../" + a.url.rstrip("/").rpartition("/")[2]
     with open(".gitmodules", "a") as fh:
         fh.write(f'[submodule "{a.path}"]\n\tpath = {a.path}\n'
-                 f"\turl = {rel}\n\tbranch = {a.branch}\n")
+                 f"\turl = {rel}\n\tbranch = {a.branch}\n"
+                 f"\tmonorepo-namespace = {a.namespace}\n")
     git("update-index", "--add", f"--cacheinfo", f"160000,{sha},{a.path}")
     git("add", ".gitmodules")
     print(f"attached {a.namespace} at {a.path} ({sha[:8]}), url={rel}")

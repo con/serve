@@ -506,6 +506,84 @@ resolution, which the namespace layout cannot offer, because a namespaced
 gitlink is unreachable from `refs/heads/*` by construction -- the same
 property that makes the clone cheap.
 
+### Recipe: a real con/tinuous archive into a project repository
+
+Importing `/mnt/backup/dandi/tinuous-logs/dandi-cli` into
+`hub.centerforopenneuroscience.org/dandi/dandi-cli` under `tinuous/`, one
+member per year. Run it where the logs are, with git-annex **10.20240227 or
+newer** -- older versions have no `p2phttp` and will push pointers whose
+content goes nowhere.
+
+```bash
+git clone -b claude/determined-feynman-ub6vnd https://github.com/con/serve
+cd serve/projects/self-contain-github-repo/tools
+
+HUB=https://hub.centerforopenneuroscience.org
+REPO=$HUB/dandi/dandi-cli.git
+
+# credentials in a helper, not in the url: a token with punctuation
+# percent-encodes badly and git-annex then fails its credential lookup
+git config --global credential.helper store
+
+# 0. does the forge take custom refs?  (aneksajo: yes)
+./gh-ref-probe.sh $HUB/dandi/dandi-cli
+
+# 1. years become members; everything below a year stays inside it
+./git-monorepo import "$REPO" tinuous \
+    /mnt/backup/dandi/tinuous-logs/dandi-cli \
+    --depth 1 --annex-min 65536
+# -> prints the root member's SHA
+
+# 2. wire it into the project's own main
+git clone "$REPO" dandi-cli && cd dandi-cli
+../git-monorepo attach "$REPO" tinuous tinuous
+git commit -m "attach the con/tinuous CI archive under tinuous/"
+git push origin main
+```
+
+`--depth 1` makes `<year>/` the member boundary; `--depth 2` would also split
+`<month>/`. Check the actual tree first -- if tinuous was configured with a
+path prefix (`github/<workflow>/<year>/...`), either point the import at the
+subdirectory that starts with the years or raise `--depth` to match.
+
+`--annex-min` is the cutoff in bytes: at or above it a file goes to
+git-annex, below it stays in git. Logs compress well in git, so a few tens of
+kilobytes is a reasonable line.
+
+Two practical notes. The import builds each member in a scratch directory and
+copies files into it, so it needs free space of roughly the archive's size.
+And content upload is driven by the url: an `https://` url uses the forge's
+P2P-HTTP endpoint, `ssh://` uses `git-annex-shell`; the import prints which,
+and reports per member whether content actually landed.
+
+### Sensitive members force the whole repository private
+
+Namespaces share one repository, so they share its single access control
+list. A member that must not be public makes the *entire* repository private
+-- the project's code along with it. This is the one boundary the design
+cannot cross, and no ref layout fixes it: `refs/namespaces/...` is still a ref
+in that repository.
+
+The practical answer is to split along exactly that boundary and keep two
+repositories: `<name>` public, `<name>-sensitive` private, each holding the
+members that belong on its side. Submodule urls handle it without any new
+machinery, because they are relative to the superproject:
+
+```
+url = ../dandi-cli.git            # a member of the public repository
+url = ../dandi-cli-sensitive.git  # a member of the private one
+```
+
+Someone without access to the private repository gets a clean failure on
+those submodules and a working tree for everything else, which is the right
+behaviour: the public history stays public and complete, and the private
+members are absent rather than half-readable.
+
+So the rule of thumb is one repository per *access class*, not per project,
+with namespaces doing the partitioning within each. That keeps the number of
+forge repositories at two or three for a project rather than one per member,
+which was the problem this design set out to solve.
+
 ### Running the populator yourself
 
 It needs nothing but a push URL, so it can be run from anywhere credentials
@@ -681,9 +759,10 @@ tools/git-monorepo clone http://127.0.0.1:8178/monorepo.git a/tinuous/2026/09 /t
 - GitHub's custom-ref policy and GC behaviour (above) -- blocking for the
   namespace layout. The branch-prefix fallback works today and is the
   answer if custom refs turn out to be rejected.
-- Per-member access control: namespaces share one repository, so they share
-  its ACL. Splitting "code is public, CI logs are internal" needs separate
-  repositories or a gateway that filters refs.
+- Per-member access control is answered, not solved: namespaces share one
+  repository's ACL, so a sensitive member makes the whole repository private.
+  Split into `<name>` and `<name>-sensitive` (see above) rather than looking
+  for a ref layout that avoids it -- there isn't one.
 - Discoverability: nothing in a forge UI lists members. `git-monorepo ls`
   reconstructs the list from `ls-remote`; a manifest ref would be cheaper.
 - Growth: one repository accumulates every artifact. Namespaces do not bound
