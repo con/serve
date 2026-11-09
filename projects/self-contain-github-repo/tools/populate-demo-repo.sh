@@ -340,9 +340,16 @@ A namespace \`a/b/c\` is stored as
 
 ## Fetching a member with plain git
 
-The forge serves no per-namespace URL, so \`git submodule update\` cannot
-resolve these on its own -- the gitlink commits are not reachable from
-\`refs/heads/*\` by design. There is no single \`git clone\` for it either:
+\`git submodule update --init --recursive\` works on these, which is not
+obvious: a member's gitlink commit is reachable only from
+\`refs/namespaces/...\`, never from \`refs/heads/*\`. It works because the
+forge advertises \`allow-reachable-sha1-in-want\`, so git fetches the commit
+by SHA after cloning the url -- and a namespaced ref is still a ref, so the
+commit counts as reachable. Both Forgejo-aneksajo and GitHub advertise it.
+
+The catch is that each submodule clone fetches the repository's
+\`refs/heads/*\` first, which is the project itself. To fetch one member
+alone, address it directly. There is no single \`git clone\` for that:
 clone always installs its own \`refs/heads/*\` refspec, and a second one
 pointing at \`refs/remotes/origin/*\` collides with
 

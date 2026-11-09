@@ -22,6 +22,7 @@ living in the same repo, sharing its object store and its access control.
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import os
 import shutil
 import subprocess
@@ -297,46 +298,107 @@ def _push_member(url, namespace, dest, branch, annexed):
     return git("rev-parse", branch, cwd=dest), uploaded
 
 
-def _import_tree(a, src_dir, namespace, depth, work):
-    """Depth-first: children become members first, then this level links them."""
-    dest = os.path.join(work, namespace.replace("/", "__") or "__root__")
-    children = sorted(d for d in os.listdir(src_dir)
-                      if os.path.isdir(os.path.join(src_dir, d)) and d != ".git")
-    split = children if depth > 0 else []
+def _member_paths(src, patterns):
+    """Directories that are submodule boundaries, as paths relative to src.
 
-    kids = []
-    for name in split:
-        child_ns = f"{namespace}/{name}" if namespace else name
-        sha = _import_tree(a, os.path.join(src_dir, name), child_ns, depth - 1, work)
-        kids.append((name, child_ns, sha))
+    A boundary is wherever a pattern matches, at whatever depth -- not the
+    first N levels of the tree. `github/*/20??` picks out the year directories
+    of a tinuous archive that has a workflow prefix, and nothing else.
+    """
+    found = {""}                       # the root is always a member
+    for root, dirs, _ in os.walk(src):
+        if ".git" in dirs:
+            dirs.remove(".git")
+        rel = os.path.relpath(root, src).replace(os.sep, "/")
+        if rel == ".":
+            continue
+        if any(fnmatch.fnmatch(rel, pat) for pat in patterns):
+            found.add(rel)
+    return found
 
-    _init_member(dest, a.branch, namespace.replace("/", "-") or "root")
-    n_small, n_large = _add_payload(dest, src_dir, a.annex_min, set(split))
 
+def _owner(path, members):
+    """The nearest enclosing member of a path, '' for the root member."""
+    p = path
+    while "/" in p:
+        p = p.rsplit("/", 1)[0]
+        if p in members:
+            return p
+    return ""
+
+
+def _member_files(src, member, members):
+    """Files belonging to this member: everything under it that no nested
+    member owns. They keep their path relative to the member, so a boundary
+    deep in the tree does not flatten what is above it."""
+    base = os.path.join(src, member) if member else src
+    out = []
+    for root, dirs, files in os.walk(base):
+        if ".git" in dirs:
+            dirs.remove(".git")
+        rel_root = os.path.relpath(root, src).replace(os.sep, "/")
+        rel_root = "" if rel_root == "." else rel_root
+        # do not descend into a nested member; it builds itself
+        dirs[:] = [d for d in dirs
+                   if (f"{rel_root}/{d}" if rel_root else d) not in members]
+        for f in files:
+            full = os.path.join(root, f)
+            out.append((full, os.path.relpath(full, base).replace(os.sep, "/")))
+    return out
+
+
+def _build_member(a, src, member, members, child_shas, work):
+    dest = os.path.join(work, member.replace("/", "__") or "__root__")
+    _init_member(dest, a.branch, member.replace("/", "-") or "root")
+
+    small, large = [], []
+    for full, rel in _member_files(src, member, members):
+        dstp = os.path.join(dest, rel)
+        os.makedirs(os.path.dirname(dstp) or dest, exist_ok=True)
+        shutil.copy2(full, dstp)
+        (large if os.path.getsize(full) >= a.annex_min else small).append(rel)
+    if small:
+        git("add", "--", *small, cwd=dest)
+        git("commit", "-qm", f"{len(small)} small file(s) kept in git", cwd=dest,
+            check=False)
+    if large:
+        git("annex", "add", "--quiet", "--", *large, cwd=dest, check=False)
+        git("commit", "-qm", f"{len(large)} large file(s) under git-annex",
+            cwd=dest, check=False)
+
+    # children are members whose nearest enclosing member is this one; the
+    # gitlink goes at the child's path RELATIVE TO THIS MEMBER, which may be
+    # several directories deep
+    kids = sorted(m for m in members if m and _owner(m, members) == member)
     if kids:
-        # One "../" at every level: git resolves a submodule's relative url
-        # against its immediate superproject's url, and every member here has
-        # the same repository url. Scaling it with depth drops path components
-        # (".../owner/repo.git" + "../../repo.git" -> ".../repo.git").
-        rel_up = "../"
         repo_file = a.url.rstrip("/").rpartition("/")[2]
         lines = []
-        for name, child_ns, sha in kids:
-            lines.append(f'[submodule "{name}"]\n\tpath = {name}\n'
+        for child in kids:
+            sub = child[len(member) + 1:] if member else child
+            ns = f"{a.namespace}/{child}" if a.namespace else child
+            # ALWAYS one "../", however deep the gitlink sits. git resolves a
+            # relative submodule url against the superproject's url alone; the
+            # gitlink's own path does not shift that base. Scaling it by depth
+            # eats url components: ".../owner/repo.git" + "../../../repo.git"
+            # resolved to "http://repo.git" -- host gone.
+            rel_up = "../"
+            lines.append(f'[submodule "{sub}"]\n\tpath = {sub}\n'
                          f"\turl = {rel_up}{repo_file}\n\tbranch = {a.branch}\n"
-                         f"\tmonorepo-namespace = {child_ns}\n")
-            git("update-index", "--add", "--cacheinfo", f"160000,{sha},{name}",
-                cwd=dest)
+                         f"\tmonorepo-namespace = {ns}\n")
+            git("update-index", "--add", "--cacheinfo",
+                f"160000,{child_shas[child]},{sub}", cwd=dest)
         with open(os.path.join(dest, ".gitmodules"), "w") as fh:
             fh.write("".join(lines))
         git("add", ".gitmodules", cwd=dest)
-        git("commit", "-qm", f"attach {len(kids)} member(s) as submodules", cwd=dest)
+        git("commit", "-qm", f"attach {len(kids)} member(s) as submodules",
+            cwd=dest)
 
-    sha, uploaded = _push_member(a.url, namespace, dest, a.branch, n_large > 0)
+    ns = f"{a.namespace}/{member}" if member else a.namespace
+    sha, uploaded = _push_member(a.url, ns, dest, a.branch, bool(large))
     note = (" content->forge" if uploaded
-            else "  *** CONTENT NOT UPLOADED ***" if n_large else "")
-    print(f"  {namespace or '(root)':<28} {sha[:12]}  "
-          f"{n_small} in git, {n_large} annexed, {len(kids)} submodule(s){note}")
+            else "  *** CONTENT NOT UPLOADED ***" if large else "")
+    print(f"  {ns:<28} {sha[:12]}  {len(small)} in git, {len(large)} annexed, "
+          f"{len(kids)} submodule(s){note}")
     return sha
 
 
@@ -345,21 +407,36 @@ def cmd_import(a):
     src = os.path.abspath(a.directory)
     if not os.path.isdir(src):
         sys.exit(f"not a directory: {src}")
+
+    patterns = list(a.split or [])
+    if not patterns:
+        # --depth N is shorthand for the first N levels: */ , */*/ , ...
+        patterns = ["/".join(["*"] * (i + 1)) for i in range(a.depth)]
+
+    members = _member_paths(src, patterns)
+    if len(members) == 1:
+        print(f"no directory matched {patterns}; the whole tree would become "
+              f"a single member. Check the pattern against the tree.",
+              file=sys.stderr)
+
     work = tempfile.mkdtemp(prefix="git-monorepo-")
     try:
-        print(f"importing {src} -> namespace {a.namespace} "
-              f"(depth {a.depth}, annex >= {a.annex_min} bytes)")
+        print(f"importing {src} -> namespace {a.namespace}")
+        print(f"  submodule boundaries: {', '.join(patterns)}")
+        print(f"  {len(members) - 1} nested member(s), annex >= {a.annex_min} bytes")
         if not is_ssh_url(a.url):
-            print(f"annex content will go over P2P-HTTP: {p2phttp_url(a.url)}\n"
-                  "  (against a localhost instance git-annex also needs\n"
-                  "   `git config --global annex.security.allowed-ip-addresses all`)\n")
-        root_sha = _import_tree(a, src, a.namespace, a.depth, work)
+            print(f"  annex content over P2P-HTTP: {p2phttp_url(a.url)}")
+        print()
+        shas = {}
+        for m in sorted((m for m in members if m),
+                        key=lambda x: x.count("/"), reverse=True):
+            shas[m] = _build_member(a, src, m, members, shas, work)
+        root_sha = _build_member(a, src, "", members, shas, work)
         print(f"\nroot member {a.namespace} = {root_sha}")
         print("attach it to the project with:")
         print(f"  git-monorepo attach {a.url} {a.namespace} <path> "
               f"--commit {root_sha}")
     finally:
-        # git-annex makes its object files read-only; chmod before removing
         for root, dirs, files in os.walk(work):
             for d in dirs:
                 os.chmod(os.path.join(root, d), 0o755)
@@ -395,9 +472,16 @@ def main():
 
     s = sub.add_parser("import", help="import a directory tree as nested members")
     s.add_argument("url"); s.add_argument("namespace"); s.add_argument("directory")
+    s.add_argument("--split", action="append", metavar="GLOB",
+                   help="a directory glob marking a submodule boundary, "
+                        "matched against paths relative to the source root, at "
+                        "any depth; repeatable. e.g. --split 'github/*/20??' "
+                        "makes each year its own member whatever is above it")
     s.add_argument("--depth", type=int, default=2,
-                   help="how many directory levels become their own members "
-                        "(default 2: e.g. year/ and month/ for tinuous logs)")
+                   help="shorthand when the tree is uniform: the first N "
+                        "directory levels become members, i.e. --split '*' "
+                        "--split '*/*' ... (default 2). Ignored if --split "
+                        "is given")
     s.add_argument("--annex-min", type=int, default=ANNEX_MIN_DEFAULT,
                    dest="annex_min", help="files this size or larger go to git-annex")
     s.set_defaults(fn=cmd_import)

@@ -480,6 +480,75 @@ garbage collection, repository maintenance, forks and transfers. That needs
 time rather than a script -- push the refs, come back in a week, re-run
 `git ls-remote`.
 
+### Correction: namespaced members DO resolve as submodules
+
+This file previously said that `git submodule update` could not walk a
+namespaced hierarchy, because a member's gitlink commit is reachable only
+from `refs/namespaces/...` and never from `refs/heads/*`. That premise is
+right; the conclusion drawn from it was wrong.
+
+Both forges advertise the same upload-pack capability:
+
+```
+allow-reachable-sha1-in-want
+allow-tip-sha1-in-want
+```
+
+**A namespaced ref is still a ref**, so a commit under it is reachable, and a
+client may ask for it by SHA. That is exactly what `git submodule update`
+does: it clones the url, finds the gitlink commit missing, and fetches it
+directly. Verified against Forgejo-aneksajo 16.0.7 -- `git fetch origin
+<sha>` for a commit reachable only from `refs/namespaces/...` returns the
+commit, and a recursive submodule update checked out four members whose
+gitlinks sat three directories deep.
+
+So the namespace layout keeps both properties at once: a plain clone stays
+cheap, *and* stock git walks the hierarchy with no tooling. That removes the
+only thing `LAYOUT=branches` had going for it.
+
+Two caveats. Each submodule clone fetches the repository's `refs/heads/*`
+first -- the project itself, which is the cheap part, but not zero. And this
+rests on the capability being advertised: both Forgejo and GitHub do today,
+but a forge that disabled it would break submodule resolution while leaving
+everything else working. `git-monorepo clone` does not depend on it, since it
+addresses members by refspec.
+
+### Submodule boundaries are paths, not depths
+
+`git-monorepo import` originally took `--depth N`, which turned the first N
+*directory levels* into members. That conflates two different things: a
+submodule boundary can sit at any depth, and only where you want it. A
+tinuous archive laid out as `github/<workflow>/<year>/<month>/` wants the
+year as the boundary -- three levels down, and not `github/` or the workflow
+directories above it.
+
+Boundaries are now chosen by glob, matched against paths relative to the
+source root, at any depth, repeatable:
+
+```bash
+git-monorepo import "$REPO" tinuous /mnt/backup/.../dandi-cli \
+    --split 'github/*/20??'
+```
+
+which produced exactly four members and left `github/` and the workflow
+directories as ordinary directories inside the root member:
+
+```
+tinuous/github/release/2024      tinuous/github/test/2024
+tinuous/github/release/2025      tinuous/github/test/2025
+tinuous                          1 in git, 4 submodule(s)
+```
+
+with the gitlinks three deep in the root member's tree and `.gitmodules`
+naming them by their full relative path. `--depth N` survives as shorthand
+for the uniform case (`--depth 2` is `--split '*' --split '*/*'`).
+
+One bug this flushed out, twice over: the relative submodule url must be a
+single `../` no matter how deep the gitlink sits. git resolves it against the
+superproject's url alone, and the gitlink's own path does not shift that
+base. Scaling it by depth ate url components -- `../../../repo.git` from a
+3-deep gitlink resolved to `http://repo.git`, host and owner gone.
+
 ### `LAYOUT=branches`: a fallback, not an alternative
 
 If a forge rejects custom refs, `populate-demo-repo.sh LAYOUT=branches` puts
@@ -501,10 +570,8 @@ that fetching all of it does not matter. It is not a way to run this on
 GitHub. If GitHub turns out to reject `refs/namespaces/*`, the answer is a
 different forge or a separate repository per member, not this.
 
-The one genuine advantage worth keeping in mind: native `git submodule`
-resolution, which the namespace layout cannot offer, because a namespaced
-gitlink is unreachable from `refs/heads/*` by construction -- the same
-property that makes the clone cheap.
+It has no compensating advantage. The obvious candidate -- native
+`git submodule` resolution -- turns out not to be exclusive to it: see below.
 
 ### Recipe: a real con/tinuous archive into a project repository
 
