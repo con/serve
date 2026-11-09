@@ -480,50 +480,31 @@ garbage collection, repository maintenance, forks and transfers. That needs
 time rather than a script -- push the refs, come back in a week, re-run
 `git ls-remote`.
 
-### On GitHub: `LAYOUT=branches`
+### `LAYOUT=branches`: a fallback, not an alternative
 
-The namespace layout still cannot be exercised against GitHub from here --
-this session's git proxy permits pushes only to `refs/heads/*`, and an
-ordinary **tag** gets the same 403 as a custom ref, so the probe's controls
-fail and its result is void. That is the proxy, not GitHub.
+If a forge rejects custom refs, `populate-demo-repo.sh LAYOUT=branches` puts
+each member on an ordinary branch, `m/<namespace>/main`. It was pushed to
+GitHub and works: `git submodule update --init --recursive` walks all three
+levels natively, with no tooling at all, because the gitlink commits are
+reachable from `refs/heads/*`.
 
-What does work on GitHub is the fallback: `LAYOUT=branches` puts each member
-on an ordinary branch, `m/<namespace>/main`. Pushed to
-`con/serve-monorepo-dev` and verified:
+**It also defeats the purpose.** Members are ordinary branches, so a plain
+`git clone` fetches every one of them. For the case this project exists to
+serve -- a `dandi-cli` carrying years of con/tinuous logs -- that means every
+`git clone dandi-cli` drags the entire CI archive down with it. The cheap
+clone is the whole point of the design, and this layout has no cheap clone.
+The UI clutter is a footnote next to that.
 
-| Check | Result |
-| --- | --- |
-| members pushed | `m/tinuous/main`, `m/tinuous/2025/main`, `m/tinuous/2026/main`, `m/issues/main` |
-| `git submodule update --init --recursive` | **works natively**, all three levels, no helper |
-| annexed pointers | present at every level, content retrieved from the recorded URLs |
-| plain clone | 224K |
+So treat it as what it is: proof that the *shape* can be expressed on a forge
+that takes only `refs/heads/*`, and a stopgap for a repository small enough
+that fetching all of it does not matter. It is not a way to run this on
+GitHub. If GitHub turns out to reject `refs/namespaces/*`, the answer is a
+different forge or a separate repository per member, not this.
 
-Native submodule resolution is the real advantage here: the gitlink commits
-are reachable from `refs/heads/*`, so stock git walks the hierarchy with no
-tooling at all. The price is the one measured earlier -- members are ordinary
-branches, so every clone fetches them and the branch list fills up (15 refs in
-that repository now).
-
-Three bugs surfaced only once this ran against a second forge:
-
-1. **`git annex sync` was eating the submodules.** By default sync commits
-   outstanding working-tree changes first. A member's submodules are gitlinks
-   added with `update-index --cacheinfo` and have no directory on disk, so
-   sync read them as deletions and committed that -- stripping every submodule
-   from the tree it had just been told to publish. `--no-commit` fixes it.
-2. **`git annex sync` was merging the wrong branch.** sync pulls as well as
-   pushes, and merges the remote branch of the same name into the current one.
-   Against a repository that already had an unrelated `refs/heads/main` it
-   died with `refusing to merge unrelated histories`, exit 1, taking the run
-   with it. Restricting `remote.origin.fetch` to
-   `+refs/heads/git-annex:refs/remotes/origin/git-annex` leaves sync exactly
-   the one branch it is supposed to merge.
-3. **Relative submodule URLs scaled with depth.** git resolves a submodule's
-   relative url against its *immediate superproject's* url, not against how
-   deep the path is -- and every member here has the same repository url. The
-   `../../` at level two ate the owner
-   (`.../con/repo.git` + `../../repo.git` -> `.../repo.git`) and nested
-   submodules failed to clone. It is one `../` at every level.
+The one genuine advantage worth keeping in mind: native `git submodule`
+resolution, which the namespace layout cannot offer, because a namespaced
+gitlink is unreachable from `refs/heads/*` by construction -- the same
+property that makes the clone cheap.
 
 ### Running the populator yourself
 

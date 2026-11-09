@@ -55,11 +55,13 @@ MAIN_LEAD=""; [ "${FORCE:-0}" = 1 ] && MAIN_LEAD="+"
 # keeps them out of a plain clone but needs a forge that accepts refs outside
 # refs/heads/ and refs/tags/.
 #
-# LAYOUT=branches stores each member on an ordinary branch, m/<namespace>/main.
-# It works on any forge, GitHub included, and `git submodule update` resolves
-# natively because the gitlink commits are reachable from refs/heads/*. The
-# price is that members are advertised to every clone and clutter the branch
-# list. Note the trailing /main: a member may not sit at a prefix of another
+# LAYOUT=branches is a FALLBACK for a forge that rejects custom refs, not an
+# equal option. Each member goes on an ordinary branch, m/<namespace>/main, so
+# `git submodule update` resolves natively -- but a plain clone then fetches
+# every member, which is exactly the cost this design exists to avoid. On a
+# repository holding years of CI logs that makes every clone enormous. Use it
+# to demonstrate the shape, or for an archive small enough not to care.
+# Note the trailing /main: a member may not sit at a prefix of another
 # member's path, or git refuses the ref with a directory/file conflict
 # ("cannot lock ref refs/heads/m/tinuous: refs/heads/m/tinuous/2025/main
 # exists").
