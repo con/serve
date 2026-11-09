@@ -40,3 +40,25 @@ vault//communications/slack//general/2026-01.json
 ^^^^^  ^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 superdataset subdatasetpath  files within the slack subdataset
 ```
+
+## Markdown Conventions
+
+**Align table columns in the source.** Markdown tables are read as plain text
+in an editor at least as often as they are rendered, so pad every cell and the
+separator row to a common width per column:
+
+```
+| Forge         | `GIT_NAMESPACE`                        | Custom refs |
+| ------------- | -------------------------------------- | ----------- |
+| GitHub        | not client-selectable                  | untested    |
+| Forgejo/Gitea | unsupported; no UI, API or ACL concept | unverified  |
+```
+
+not the ragged `| GitHub | not client-selectable | untested |` form.
+
+Keep cells short enough that rows stay within a reasonable line length --
+roughly 100 characters. When a cell wants a paragraph, put a short marker in
+the table and a numbered note underneath rather than letting one row blow out
+the whole column.
+
+This applies to chat replies too, not just files in the repo.

@@ -1,0 +1,498 @@
+#!/usr/bin/env python3
+"""git-monorepo -- keep a collection of repositories inside ONE git repository.
+
+Each member repository lives in a git *namespace*: its refs are stored under
+refs/namespaces/<a>/refs/namespaces/<b>/... in the single shared object store.
+
+Two access modes, same on-disk ref layout:
+
+  refspec   (default) -- works on ANY forge, GitHub included. The client
+            addresses the member repo with fully-qualified refspecs. The forge
+            needs no namespace support at all; it just has to accept refs
+            outside refs/heads/ and refs/tags/.
+
+  namespace -- for a forge that runs git-http-backend/gitolite with
+            GIT_NAMESPACE (see ns-http-server.py). The member repo is a normal
+            URL and every git command Just Works.
+
+Why: a plain `git clone` of the repo fetches refs/heads/* only, so the
+artifacts (CI logs, issues, ...) cost nothing until asked for -- while still
+living in the same repo, sharing its object store and its access control.
+"""
+from __future__ import annotations
+
+import argparse
+import fnmatch
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+from urllib.parse import urlsplit
+
+NS = "refs/namespaces"
+
+
+def ns_prefix(namespace: str) -> str:
+    """'a/b/c' -> 'refs/namespaces/a/refs/namespaces/b/refs/namespaces/c'"""
+    parts = [p for p in namespace.strip("/").split("/") if p]
+    if not parts:
+        return ""
+    return "/".join(f"{NS}/{p}" for p in parts)
+
+
+def git(*args, cwd=None, capture=True, check=True):
+    p = subprocess.run(["git", *args], cwd=cwd, check=False,
+                       capture_output=capture, text=True)
+    if check and p.returncode:
+        sys.exit(f"git {' '.join(args)}\n{(p.stderr or '').strip()}")
+    return (p.stdout or "").strip()
+
+
+def ns_url(url: str, namespace: str) -> str:
+    """URL that a namespace-aware server exposes for this member."""
+    base, _, repo = url.rstrip("/").rpartition("/")
+    return f"{base}/~{namespace}/{repo}"
+
+
+# ---------------------------------------------------------------- commands
+
+def cmd_ls(a):
+    """List the member repositories present in the shared repo."""
+    out = git("ls-remote", a.url)
+    members: dict[str, dict[str, str]] = {}
+    for line in out.splitlines():
+        sha, _, ref = line.partition("\t")
+        if not ref.startswith(NS + "/"):
+            members.setdefault("(default)", {})[ref] = sha
+            continue
+        # strip the interleaved refs/namespaces/ components back into a path
+        parts, rest = [], ref
+        while rest.startswith(NS + "/"):
+            rest = rest[len(NS) + 1:]
+            head, _, rest = rest.partition("/")
+            parts.append(head)
+        members.setdefault("/".join(parts), {})[rest] = sha
+    for name in sorted(members):
+        refs = members[name]
+        head = refs.get("HEAD", "")
+        branches = sorted(r for r in refs if r.startswith("refs/heads/"))
+        annex = " [git-annex]" if "refs/heads/git-annex" in refs else ""
+        print(f"{name:<28} {head[:8] or '--------':<9}"
+              f" {len(branches)} branch(es){annex}")
+
+
+def cmd_clone(a):
+    """Fetch exactly one member repository into a normal working clone."""
+    prefix = ns_prefix(a.namespace)
+    dest = a.directory
+    git("init", "-q", "-b", a.branch, dest)
+    if a.mode == "namespace":
+        url = ns_url(a.url, a.namespace)
+        git("remote", "add", "origin", url, cwd=dest)
+        git("fetch", "-q", "origin", cwd=dest)
+    else:
+        git("remote", "add", "origin", a.url, cwd=dest)
+        # only this member's refs enter the clone
+        git("config", "remote.origin.fetch",
+            f"+{prefix}/refs/heads/*:refs/remotes/origin/*", cwd=dest)
+        git("fetch", "-q", "origin", cwd=dest)
+        # so that later `git push` lands back in the namespace
+        git("config", "remote.origin.push",
+            f"refs/heads/*:{prefix}/refs/heads/*", cwd=dest)
+    git("checkout", "-q", "-B", a.branch, f"origin/{a.branch}", cwd=dest)
+    git("config", f"branch.{a.branch}.remote", "origin", cwd=dest)
+    git("config", f"branch.{a.branch}.merge", f"refs/heads/{a.branch}", cwd=dest)
+
+    # The member's git-annex branch lives in one of two places: inside the
+    # member's own namespace, or at the repository's canonical
+    # refs/heads/git-annex when members share it (the usual case). Fetch
+    # whichever exists into the REMOTE-TRACKING ref and stop there -- git-annex
+    # merges it into its own branch on `git annex init`/`sync`. Writing
+    # refs/heads/git-annex directly would be maintaining that branch by hand,
+    # which is git-annex's job.
+    remote_refs = {line.split("\t")[-1]
+                   for line in git("ls-remote", a.url).splitlines() if line}
+    annex_src = next((r for r in (f"{prefix}/refs/heads/git-annex",
+                                  "refs/heads/git-annex") if r in remote_refs),
+                     None)
+    if annex_src:
+        git("config", "--add", "remote.origin.fetch",
+            f"+{annex_src}:refs/remotes/origin/git-annex", cwd=dest)
+        git("fetch", "-q", "origin", cwd=dest)
+        # so `git annex get` can reach content the forge holds
+        annex_url = None if is_ssh_url(a.url) else p2phttp_url(a.url)
+        if annex_url:
+            git("config", "remote.origin.annexUrl", annex_url, cwd=dest,
+                check=False)
+        where = "its own namespace" if annex_src.startswith(prefix) else "the shared branch"
+        print(f"note: git-annex branch available from {where}; "
+              f"run `git annex init` in {dest} and git-annex will merge it")
+    print(f"cloned {a.namespace} -> {dest} (mode={a.mode})")
+
+
+def cmd_push(a):
+    """Publish the repo in <directory> as member <namespace>."""
+    prefix = ns_prefix(a.namespace)
+    src = a.directory
+    refs = a.refs or ["HEAD"]
+    if a.mode == "namespace":
+        url = ns_url(a.url, a.namespace)
+        specs = [f"{r}:refs/heads/{a.branch}" if r == "HEAD" else f"{r}:refs/heads/{r}"
+                 for r in refs]
+    else:
+        url = a.url
+        specs = [f"{r}:{prefix}/refs/heads/{a.branch}" if r == "HEAD"
+                 else f"{r}:{prefix}/refs/heads/{r}" for r in refs]
+    git("push", url, *specs, cwd=src, capture=False)
+    print(f"pushed {src} -> {a.namespace}")
+    if a.mode != "namespace":
+        print(f"  HEAD symref for this namespace must be set server-side:\n"
+              f"    git symbolic-ref {prefix}/HEAD {prefix}/refs/heads/{a.branch}\n"
+              f"  (not needed in refspec mode; required for namespace-mode clones)")
+
+
+def cmd_attach(a):
+    """Register a member as a submodule of the current repo, relative URL."""
+    prefix = ns_prefix(a.namespace)
+    sha = a.commit or git("ls-remote", a.url,
+                          f"{prefix}/refs/heads/{a.branch}").split("\t")[0]
+    if not sha:
+        sys.exit(f"no ref {prefix}/refs/heads/{a.branch} in {a.url}")
+    # One "../" plus this same repository's name, exactly as `import` and
+    # populate-demo-repo.sh write it: the member lives in a namespace of THIS
+    # repository, and git resolves a submodule's relative url against its
+    # immediate superproject's url. (This used to emit "../~<ns>/<repo>.git",
+    # a gateway convention from an early draft that only ns-http-server.py ever
+    # served -- on a real forge it 404s.)
+    rel = "../" + a.url.rstrip("/").rpartition("/")[2]
+    with open(".gitmodules", "a") as fh:
+        fh.write(f'[submodule "{a.path}"]\n\tpath = {a.path}\n'
+                 f"\turl = {rel}\n\tbranch = {a.branch}\n"
+                 f"\tmonorepo-namespace = {a.namespace}\n")
+    git("update-index", "--add", f"--cacheinfo", f"160000,{sha},{a.path}")
+    git("add", ".gitmodules")
+    print(f"attached {a.namespace} at {a.path} ({sha[:8]}), url={rel}")
+
+
+
+# ---------------------------------------------------------------- import
+
+ANNEX_MIN_DEFAULT = 64 * 1024
+
+
+def _run_git(dest, *args, **kw):
+    return git(*args, cwd=dest, **kw)
+
+
+def _init_member(dest, branch, annex_name):
+    os.makedirs(dest, exist_ok=True)
+    git("init", "-q", "-b", branch, dest)
+    git("config", "commit.gpgsign", "false", cwd=dest)
+    git("config", "push.negotiate", "false", cwd=dest)
+    git("annex", "init", "-q", annex_name, cwd=dest, check=False)
+
+
+def _add_payload(dest, src_dir, annex_min, subdir_names):
+    """Copy this level's own files in, annexing the big ones."""
+    small, large = [], []
+    for name in sorted(os.listdir(src_dir)):
+        if name == ".git" or name in subdir_names:
+            continue
+        srcp = os.path.join(src_dir, name)
+        if os.path.isdir(srcp):            # a directory we are NOT splitting out
+            for root, _, files in os.walk(srcp):
+                for f in files:
+                    full = os.path.join(root, f)
+                    rel = os.path.relpath(full, src_dir)
+                    (large if os.path.getsize(full) >= annex_min else small).append(rel)
+        elif os.path.isfile(srcp):
+            (large if os.path.getsize(srcp) >= annex_min else small).append(name)
+    for rel in small + large:
+        dstp = os.path.join(dest, rel)
+        os.makedirs(os.path.dirname(dstp), exist_ok=True)
+        shutil.copy2(os.path.join(src_dir, rel), dstp)
+    if small:
+        git("add", "--", *small, cwd=dest)
+        git("commit", "-qm", f"{len(small)} small file(s) kept in git", cwd=dest,
+            check=False)
+    if large:
+        git("annex", "add", "--quiet", "--", *large, cwd=dest, check=False)
+        git("commit", "-qm", f"{len(large)} large file(s) under git-annex", cwd=dest,
+            check=False)
+    return len(small), len(large)
+
+
+def is_ssh_url(url):
+    """True for ssh:// and scp-style host:path, false for http(s)."""
+    if url.startswith(("http://", "https://")):
+        return False
+    return url.startswith("ssh://") or (":" in url and "//" not in url)
+
+
+def p2phttp_url(url):
+    """The git-annex P2P-HTTP endpoint Forgejo-aneksajo serves, or None.
+
+    aneksajo registers the handler at the server ROOT, not under the
+    repository path (routers/web/web.go: m.Group("", ...) around
+    "/git-annex-p2phttp/git-annex/{uuid}/*"), and the uuid in the path is what
+    selects the repository. git-annex is told about it through
+    remote.<name>.annexUrl as an annex+http(s) url; it appends the uuid itself.
+
+    It is NOT auto-discovered: without annexUrl git-annex falls back to probing
+    <url>/config, finds no usable annex remote and sets annex-ignore, which
+    looks exactly like the forge refusing content over HTTPS. It is not.
+    """
+    parts = urlsplit(url)
+    if parts.scheme not in ("http", "https"):
+        return None
+    return f"annex+{parts.scheme}://{parts.netloc}/git-annex-p2phttp/git-annex/"
+
+
+def _push_member(url, namespace, dest, branch, annexed):
+    """Push a member's content branch into its namespace, and its content.
+
+    The git-annex branch is shared by every member and belongs to git-annex:
+    `git annex sync` fetches, merges and pushes it. Never touch that branch by
+    hand. Earlier versions of this did -- a `git annex merge` plus a manual
+    push, with a retry loop bolted on when the pushes kept being rejected --
+    which is a reimplementation of sync, and a worse one.
+
+    sync also honours remote.<name>.push, so the content branch lands in this
+    member's namespace rather than on refs/heads/<branch>, and it pushes the
+    content branch and the annex branch separately, which is what an empty
+    repository requires: sending both in one push makes the forge reject the
+    annex branch with "reference already exists".
+    """
+    prefix = ns_prefix(namespace)
+    dst = f"{prefix}/refs/heads/{branch}"
+    if not annexed:
+        git("push", "-q", url, f"+{branch}:{dst}", cwd=dest)
+        return git("rev-parse", branch, cwd=dest), False
+
+    git("remote", "add", "origin", url, cwd=dest, check=False)
+    git("remote", "set-url", "origin", url, cwd=dest, check=False)
+    annex_url = None if is_ssh_url(url) else p2phttp_url(url)
+    if annex_url:
+        git("config", "remote.origin.annexUrl", annex_url, cwd=dest, check=False)
+    git("config", "remote.origin.push", f"+refs/heads/{branch}:{dst}", cwd=dest)
+    # Restrict what sync can see: it pulls too, and merges the remote branch of
+    # the same name into the current one, so the default refspec makes it try
+    # to merge the repository's refs/heads/<branch> into this member's
+    # unrelated one and fail with "refusing to merge unrelated histories".
+    # Fetching only the shared annex branch leaves it the one branch it should
+    # merge.
+    git("config", "remote.origin.fetch",
+        "+refs/heads/git-annex:refs/remotes/origin/git-annex", cwd=dest)
+
+    # --no-commit is load-bearing: by default sync commits outstanding working
+    # tree changes, and submodule gitlinks added with `update-index --cacheinfo`
+    # have no directory on disk, so sync reads them as deletions and commits
+    # those -- silently stripping every submodule from the published tree.
+    sync = ("annex", "sync", "--no-commit", "--no-content", "origin")
+    git(*sync, cwd=dest, check=False)
+    git("annex", "copy", "--quiet", "--to", "origin", cwd=dest, check=False)
+    uploaded = bool(git("annex", "find", "--in", "origin", cwd=dest,
+                        check=False).strip())
+    git(*sync, cwd=dest, check=False)
+    return git("rev-parse", branch, cwd=dest), uploaded
+
+
+def _member_paths(src, patterns):
+    """Directories that are submodule boundaries, as paths relative to src.
+
+    A boundary is wherever a pattern matches, at whatever depth -- not the
+    first N levels of the tree. `github/*/20??` picks out the year directories
+    of a tinuous archive that has a workflow prefix, and nothing else.
+    """
+    found = {""}                       # the root is always a member
+    for root, dirs, _ in os.walk(src):
+        if ".git" in dirs:
+            dirs.remove(".git")
+        rel = os.path.relpath(root, src).replace(os.sep, "/")
+        if rel == ".":
+            continue
+        if any(fnmatch.fnmatch(rel, pat) for pat in patterns):
+            found.add(rel)
+    return found
+
+
+def _owner(path, members):
+    """The nearest enclosing member of a path, '' for the root member."""
+    p = path
+    while "/" in p:
+        p = p.rsplit("/", 1)[0]
+        if p in members:
+            return p
+    return ""
+
+
+def _member_files(src, member, members):
+    """Files belonging to this member: everything under it that no nested
+    member owns. They keep their path relative to the member, so a boundary
+    deep in the tree does not flatten what is above it."""
+    base = os.path.join(src, member) if member else src
+    out = []
+    for root, dirs, files in os.walk(base):
+        if ".git" in dirs:
+            dirs.remove(".git")
+        rel_root = os.path.relpath(root, src).replace(os.sep, "/")
+        rel_root = "" if rel_root == "." else rel_root
+        # do not descend into a nested member; it builds itself
+        dirs[:] = [d for d in dirs
+                   if (f"{rel_root}/{d}" if rel_root else d) not in members]
+        for f in files:
+            full = os.path.join(root, f)
+            out.append((full, os.path.relpath(full, base).replace(os.sep, "/")))
+    return out
+
+
+def _build_member(a, src, member, members, child_shas, work):
+    dest = os.path.join(work, member.replace("/", "__") or "__root__")
+    _init_member(dest, a.branch, member.replace("/", "-") or "root")
+
+    small, large = [], []
+    for full, rel in _member_files(src, member, members):
+        dstp = os.path.join(dest, rel)
+        os.makedirs(os.path.dirname(dstp) or dest, exist_ok=True)
+        shutil.copy2(full, dstp)
+        (large if os.path.getsize(full) >= a.annex_min else small).append(rel)
+    if small:
+        git("add", "--", *small, cwd=dest)
+        git("commit", "-qm", f"{len(small)} small file(s) kept in git", cwd=dest,
+            check=False)
+    if large:
+        git("annex", "add", "--quiet", "--", *large, cwd=dest, check=False)
+        git("commit", "-qm", f"{len(large)} large file(s) under git-annex",
+            cwd=dest, check=False)
+
+    # children are members whose nearest enclosing member is this one; the
+    # gitlink goes at the child's path RELATIVE TO THIS MEMBER, which may be
+    # several directories deep
+    kids = sorted(m for m in members if m and _owner(m, members) == member)
+    if kids:
+        repo_file = a.url.rstrip("/").rpartition("/")[2]
+        lines = []
+        for child in kids:
+            sub = child[len(member) + 1:] if member else child
+            ns = f"{a.namespace}/{child}" if a.namespace else child
+            # ALWAYS one "../", however deep the gitlink sits. git resolves a
+            # relative submodule url against the superproject's url alone; the
+            # gitlink's own path does not shift that base. Scaling it by depth
+            # eats url components: ".../owner/repo.git" + "../../../repo.git"
+            # resolved to "http://repo.git" -- host gone.
+            rel_up = "../"
+            lines.append(f'[submodule "{sub}"]\n\tpath = {sub}\n'
+                         f"\turl = {rel_up}{repo_file}\n\tbranch = {a.branch}\n"
+                         f"\tmonorepo-namespace = {ns}\n")
+            git("update-index", "--add", "--cacheinfo",
+                f"160000,{child_shas[child]},{sub}", cwd=dest)
+        with open(os.path.join(dest, ".gitmodules"), "w") as fh:
+            fh.write("".join(lines))
+        git("add", ".gitmodules", cwd=dest)
+        git("commit", "-qm", f"attach {len(kids)} member(s) as submodules",
+            cwd=dest)
+
+    ns = f"{a.namespace}/{member}" if member else a.namespace
+    sha, uploaded = _push_member(a.url, ns, dest, a.branch, bool(large))
+    note = (" content->forge" if uploaded
+            else "  *** CONTENT NOT UPLOADED ***" if large else "")
+    print(f"  {ns:<28} {sha[:12]}  {len(small)} in git, {len(large)} annexed, "
+          f"{len(kids)} submodule(s){note}")
+    return sha
+
+
+def cmd_import(a):
+    """Turn a directory tree into a hierarchy of members under <namespace>."""
+    src = os.path.abspath(a.directory)
+    if not os.path.isdir(src):
+        sys.exit(f"not a directory: {src}")
+
+    patterns = list(a.split or [])
+    if not patterns:
+        # --depth N is shorthand for the first N levels: */ , */*/ , ...
+        patterns = ["/".join(["*"] * (i + 1)) for i in range(a.depth)]
+
+    members = _member_paths(src, patterns)
+    if len(members) == 1:
+        print(f"no directory matched {patterns}; the whole tree would become "
+              f"a single member. Check the pattern against the tree.",
+              file=sys.stderr)
+
+    work = tempfile.mkdtemp(prefix="git-monorepo-")
+    try:
+        print(f"importing {src} -> namespace {a.namespace}")
+        print(f"  submodule boundaries: {', '.join(patterns)}")
+        print(f"  {len(members) - 1} nested member(s), annex >= {a.annex_min} bytes")
+        if not is_ssh_url(a.url):
+            print(f"  annex content over P2P-HTTP: {p2phttp_url(a.url)}")
+        print()
+        shas = {}
+        for m in sorted((m for m in members if m),
+                        key=lambda x: x.count("/"), reverse=True):
+            shas[m] = _build_member(a, src, m, members, shas, work)
+        root_sha = _build_member(a, src, "", members, shas, work)
+        print(f"\nroot member {a.namespace} = {root_sha}")
+        print("attach it to the project with:")
+        print(f"  git-monorepo attach {a.url} {a.namespace} <path> "
+              f"--commit {root_sha}")
+    finally:
+        for root, dirs, files in os.walk(work):
+            for d in dirs:
+                os.chmod(os.path.join(root, d), 0o755)
+            for f in files:
+                try:
+                    os.chmod(os.path.join(root, f), 0o644)
+                except OSError:
+                    pass
+        shutil.rmtree(work, ignore_errors=True)
+
+
+def main():
+    p = argparse.ArgumentParser(prog="git-monorepo", description=__doc__,
+                                formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("--mode", choices=["refspec", "namespace"], default="refspec",
+                   help="refspec: any forge incl. GitHub (default); "
+                        "namespace: server honours GIT_NAMESPACE")
+    p.add_argument("--branch", default="main")
+    sub = p.add_subparsers(dest="cmd", required=True)
+
+    s = sub.add_parser("ls", help="list member repositories")
+    s.add_argument("url"); s.set_defaults(fn=cmd_ls)
+
+    s = sub.add_parser("clone", help="clone one member")
+    s.add_argument("url"); s.add_argument("namespace"); s.add_argument("directory")
+    s.set_defaults(fn=cmd_clone)
+
+    s = sub.add_parser("push", help="publish a repo as a member")
+    s.add_argument("url"); s.add_argument("namespace")
+    s.add_argument("directory", nargs="?", default=".")
+    s.add_argument("refs", nargs="*")
+    s.set_defaults(fn=cmd_push)
+
+    s = sub.add_parser("import", help="import a directory tree as nested members")
+    s.add_argument("url"); s.add_argument("namespace"); s.add_argument("directory")
+    s.add_argument("--split", action="append", metavar="GLOB",
+                   help="a directory glob marking a submodule boundary, "
+                        "matched against paths relative to the source root, at "
+                        "any depth; repeatable. e.g. --split 'github/*/20??' "
+                        "makes each year its own member whatever is above it")
+    s.add_argument("--depth", type=int, default=2,
+                   help="shorthand when the tree is uniform: the first N "
+                        "directory levels become members, i.e. --split '*' "
+                        "--split '*/*' ... (default 2). Ignored if --split "
+                        "is given")
+    s.add_argument("--annex-min", type=int, default=ANNEX_MIN_DEFAULT,
+                   dest="annex_min", help="files this size or larger go to git-annex")
+    s.set_defaults(fn=cmd_import)
+
+    s = sub.add_parser("attach", help="add a member as a submodule here")
+    s.add_argument("url"); s.add_argument("namespace"); s.add_argument("path")
+    s.add_argument("--commit"); s.set_defaults(fn=cmd_attach)
+
+    a = p.parse_args()
+    a.fn(a)
+
+
+if __name__ == "__main__":
+    main()

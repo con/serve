@@ -1,0 +1,454 @@
+#!/bin/bash
+# Populate ONE forge repository with a collection of repositories:
+#
+#   refs/heads/main                      the project      <- plain `git clone` gets only this
+#   refs/heads/git-annex                 shared annex branch (see NOTE)
+#   refs/namespaces/tinuous/...          CI archive root, itself holding two members
+#   refs/namespaces/tinuous/2025/...     annexed CI logs
+#   refs/namespaces/tinuous/2026/...     annexed CI logs
+#   refs/namespaces/issues/...           issue export
+#
+# Usage:  populate-demo-repo.sh <push-url> [<repo-basename>]
+#   <push-url>       a URL you can push to, credentials included if needed
+#   <repo-basename>  what the repo is called, for relative submodule URLs
+#                    (default: derived from <push-url>)
+#
+# NOTE on the annex branch: every git-annex repository insists on
+# refs/heads/git-annex, and on a forge that stores annex content
+# (Forgejo-aneksajo) git-annex-shell writes location state to exactly that ref.
+# So members SHARE one canonical annex branch and namespace only their content
+# branches. Giving each member its own namespaced annex branch uploads content
+# and then fails to record it.
+set -euo pipefail
+
+PUSH=${1:?usage: populate-demo-repo.sh <push-url> [<repo-basename>]}
+BASENAME=${2:-$(basename "${PUSH%.git}")}
+W=$(mktemp -d)
+# git-annex makes its object files and their directories read-only, so a plain
+# `rm -rf` on the scratch tree fails with "Permission denied".
+trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
+
+G="git -c commit.gpgsign=false -c push.negotiate=false -c advice.detachedHead=false"
+export GIT_AUTHOR_NAME="${GIT_AUTHOR_NAME:-con/serve demo}"
+export GIT_AUTHOR_EMAIL="${GIT_AUTHOR_EMAIL:-demo@example.org}"
+export GIT_COMMITTER_NAME="$GIT_AUTHOR_NAME" GIT_COMMITTER_EMAIL="$GIT_AUTHOR_EMAIL"
+
+# The project's own history goes to refs/heads/main, so an already-initialised
+# repository (Forgejo's "Initialize this repository", GitHub's auto_init) leaves
+# an unrelated root commit there and the push is rejected as a non-fast-forward.
+# Fail loudly rather than populate the members and silently skip the project.
+REMOTE_MAIN=$(git ls-remote "$PUSH" refs/heads/main 2>/dev/null | awk '{print $1}')
+if [ -n "$REMOTE_MAIN" ] && [ "${FORCE:-0}" != 1 ]; then
+  cat >&2 <<EOM
+refs/heads/main already exists on the target (${REMOTE_MAIN:0:12}).
+
+This script writes the project's own history there, so it needs an EMPTY
+repository -- create it without "Initialize this repository".
+
+Re-run with FORCE=1 to overwrite the existing main instead.
+EOM
+  exit 1
+fi
+MAIN_LEAD=""; [ "${FORCE:-0}" = 1 ] && MAIN_LEAD="+"
+
+# LAYOUT=namespaces (default) stores members under refs/namespaces/, which
+# keeps them out of a plain clone but needs a forge that accepts refs outside
+# refs/heads/ and refs/tags/.
+#
+# LAYOUT=branches is a FALLBACK for a forge that rejects custom refs, not an
+# equal option. Each member goes on an ordinary branch, m/<namespace>/main, so
+# `git submodule update` resolves natively -- but a plain clone then fetches
+# every member, which is exactly the cost this design exists to avoid. On a
+# repository holding years of CI logs that makes every clone enormous. Use it
+# to demonstrate the shape, or for an archive small enough not to care.
+# Note the trailing /main: a member may not sit at a prefix of another
+# member's path, or git refuses the ref with a directory/file conflict
+# ("cannot lock ref refs/heads/m/tinuous: refs/heads/m/tinuous/2025/main
+# exists").
+LAYOUT=${LAYOUT:-namespaces}
+
+member_ref() {  # member_ref <namespace> -> the full ref its main lives at
+  if [ "$LAYOUT" = branches ]; then echo "refs/heads/m/$1/main"
+  else echo "$(ns_prefix "$1")/refs/heads/main"; fi
+}
+
+ns_prefix() {  # a/b/c -> refs/namespaces/a/refs/namespaces/b/refs/namespaces/c
+  local out=""; local IFS=/
+  for p in $1; do out="$out/refs/namespaces/$p"; done
+  echo "${out#/}"
+}
+say() { printf '\n== %s\n' "$*"; }
+
+# Push a member's content branch into its own namespace, and its annexed
+# content to the forge. The git-annex branch is shared across all members and
+# is left entirely to `git annex sync`.
+member_push() {           # member_push <dir> <namespace|""> [--annex]
+  local dir=$1 ns=$2 annex=${3:-} dst lead=""
+  if [ -z "$ns" ]; then dst=refs/heads/main; lead=$MAIN_LEAD
+  else dst="$(member_ref "$ns")"; lead="+"; fi
+
+  if [ -z "$annex" ]; then
+    $G -C "$dir" push -q "$PUSH" "${lead}refs/heads/main:$dst"
+    return
+  fi
+
+  $G -C "$dir" remote add origin "$PUSH" 2>/dev/null || \
+    $G -C "$dir" remote set-url origin "$PUSH"
+
+  # Point git-annex at the forge's P2P-HTTP endpoint. Without this it probes
+  # <url>/config, finds no usable annex remote and sets annex-ignore -- which
+  # looks like the forge refusing content over HTTP. It is not: aneksajo serves
+  # the git-annex P2P protocol at the instance root.
+  # Only Forgejo-aneksajo serves this endpoint. Pointing a client at it on a
+  # forge that does not (GitHub) would just make `git annex get` fail oddly, so
+  # derive it only when the host plausibly has it. ANNEX_P2PHTTP=0 disables.
+  local p2p host
+  host=$(printf '%s' "$PUSH" | sed -E 's|^https?://([^/@]*@)?([^/:]+).*|\2|')
+  case "${ANNEX_P2PHTTP:-auto}:$host" in
+    0:*|*:github.com|*:gitlab.com|*:bitbucket.org) p2p="" ;;
+    *) p2p=$(printf '%s' "$PUSH" | sed -E 's|^(https?)://([^/]+)/.*|annex+\1://\2/git-annex-p2phttp/git-annex/|') ;;
+  esac
+  case "$p2p" in annex+http*) $G -C "$dir" config remote.origin.annexUrl "$p2p";; esac
+
+  # The content branch must land in this member's namespace, not on
+  # refs/heads/main, so tell the remote where pushes go and let git-annex drive.
+  $G -C "$dir" config remote.origin.push "${lead}refs/heads/main:$dst"
+
+  # Restrict what sync can SEE. sync also pulls, and it merges the remote
+  # branch of the same name into the current one -- so with the default
+  # refspec it tries to merge the repository's refs/heads/main into this
+  # member's unrelated main and dies with "refusing to merge unrelated
+  # histories", taking the whole run with it. Fetching only the shared annex
+  # branch leaves sync with exactly the one branch it is supposed to merge.
+  $G -C "$dir" config remote.origin.fetch '+refs/heads/git-annex:refs/remotes/origin/git-annex'
+
+  # `git annex sync` owns the git-annex branch: it fetches, merges and pushes
+  # it itself. Never merge or push that branch by hand -- git-annex maintains
+  # it, and doing it manually is how the earlier versions of this script ended
+  # up fighting non-fast-forwards on every member after the first.
+  #
+  # --no-commit is load-bearing. By default sync commits outstanding working
+  # tree changes first, and a member's submodules are gitlinks added with
+  # `update-index --cacheinfo` with no directory on disk -- so sync saw them as
+  # deletions and committed those, silently stripping every submodule from the
+  # tree it had just been asked to publish.
+  local SY="annex sync --no-commit --no-content origin"
+  git -C "$dir" -c commit.gpgsign=false $SY >/dev/null 2>&1
+
+  # content to the forge, then sync again so the location log records it
+  git -C "$dir" annex copy --quiet --to origin >/dev/null 2>&1 || true
+  git -C "$dir" -c commit.gpgsign=false $SY >/dev/null 2>&1
+}
+
+# member_push writes only diagnostics, never a value, so read the SHA with a
+# separate call. Returning it through stdout was a real bug: git-annex prints
+# "Remote origin not usable by git-annex" to stdout on some versions, and
+# $(member_push ...) swallowed that into the SHA, which then reached
+# `update-index --cacheinfo` as "160000,<noise>\n<sha>,<path>".
+member_sha() { $G -C "$1" rev-parse main; }
+
+# .gitmodules entry. The forge cannot serve a namespace at its own URL, so the
+# url points back at this same repository and the namespace is recorded in a
+# monorepo-namespace key that tooling (git-monorepo) reads.
+gitmodule() {             # gitmodule <name> <path> <namespace> <unused>
+  local name=$1 path=$2 ns=$3 br=main
+  # Always one "../", at every level. git resolves a submodule's relative url
+  # against its IMMEDIATE superproject's url, not against how deep the path is
+  # -- and here every member's url is this same repository. Scaling the "../"
+  # with depth ate the owner at level two:
+  #   .../con/serve-monorepo-dev.git + ../../x.git -> .../x.git   (no owner)
+  local rel="../"
+  [ "$LAYOUT" = branches ] && br="m/$ns/main"
+  cat <<EOF
+[submodule "$name"]
+	path = $path
+	url = ${rel}${BASENAME}.git
+	branch = $br
+	monorepo-namespace = $ns
+EOF
+}
+
+annex_from_url() {        # annex_from_url <file> <url>
+  git annex addurl --file="$1" "$2" >/dev/null 2>&1
+}
+
+############################################################ tinuous/2025
+say "member tinuous/2025 (annexed CI logs)"
+D=$W/t2025; $G init -q -b main "$D"; cd "$D"
+git annex init -q "tinuous-2025" >/dev/null 2>&1
+mkdir -p logs
+cat > logs/index.json <<'EOF'
+{"year": 2025, "runs": [{"id": 9001, "workflow": "test.yml", "status": "success"}]}
+EOF
+$G add logs/index.json; $G commit -qm "2025 run index (small, stays in git)"
+annex_from_url logs/run-9001.log https://raw.githubusercontent.com/git/git/master/README.md
+annex_from_url logs/run-9001.err https://raw.githubusercontent.com/datalad/datalad/maint/CONTRIBUTING.md
+$G commit -qm "annexed CI log for run 9001"
+member_push "$D" tinuous/2025 --annex; SHA_2025=$(member_sha "$D")
+echo "   $SHA_2025"
+
+############################################################ tinuous/2026
+say "member tinuous/2026 (annexed CI logs)"
+D=$W/t2026; $G init -q -b main "$D"; cd "$D"
+git annex init -q "tinuous-2026" >/dev/null 2>&1
+mkdir -p logs
+cat > logs/index.json <<'EOF'
+{"year": 2026, "runs": [{"id": 9101, "workflow": "test.yml", "status": "failure"},
+                        {"id": 9102, "workflow": "build.yml", "status": "success"}]}
+EOF
+$G add logs/index.json; $G commit -qm "2026 run index"
+annex_from_url logs/run-9101.log https://raw.githubusercontent.com/con/duct/main/README.md
+annex_from_url logs/run-9102.log https://raw.githubusercontent.com/datalad/datalad/maint/README.md
+$G commit -qm "annexed CI logs for runs 9101, 9102"
+member_push "$D" tinuous/2026 --annex; SHA_2026=$(member_sha "$D")
+echo "   $SHA_2026"
+
+############################################################ tinuous (root)
+say "member tinuous (holds 2025 and 2026 as submodules)"
+D=$W/tinuous; $G init -q -b main "$D"; cd "$D"
+cat > README.md <<EOF
+# con/tinuous CI archive
+
+A member repository of \`$BASENAME\`, living in the \`tinuous\` namespace.
+It holds one member per year, each with its CI logs under git-annex.
+EOF
+$G add README.md; $G commit -qm "tinuous archive root"
+git annex init -q "tinuous-root" >/dev/null 2>&1
+mkdir -p summary
+annex_from_url summary/all-runs.tsv https://raw.githubusercontent.com/git/git/master/COPYING
+$G commit -qm "annexed cross-year run summary"
+{ gitmodule 2025 2025 tinuous/2025 2; gitmodule 2026 2026 tinuous/2026 2; } > .gitmodules
+$G update-index --add --cacheinfo 160000,"$SHA_2025",2025
+$G update-index --add --cacheinfo 160000,"$SHA_2026",2026
+$G add .gitmodules; $G commit -qm "attach 2025 and 2026 as submodules"
+member_push "$D" tinuous --annex; SHA_TIN=$(member_sha "$D")
+echo "   $SHA_TIN"
+
+############################################################ issues
+say "member issues (issue export)"
+D=$W/issues; $G init -q -b main "$D"; cd "$D"
+mkdir -p issues
+if [ -n "${HUB_API:-}" ] && [ -n "${HUB_REPO:-}" ]; then
+  curl -sS --max-time 30 ${TOKEN:+-H "Authorization: token $TOKEN"} \
+    "$HUB_API/repos/$HUB_REPO/issues?state=all&limit=50" > issues/issues.json || echo '[]' > issues/issues.json
+else
+  echo '[]' > issues/issues.json
+fi
+python3 - <<'PY'
+import json, os, pathlib
+p = pathlib.Path("issues/issues.json")
+try:
+    data = json.loads(p.read_text())
+except Exception:
+    data = []
+if not isinstance(data, list):
+    data = []
+if not data:   # offline / no issues yet: ship a representative sample
+    data = [{"number": 1, "title": "Demo issue: namespaces for CI log archives",
+             "state": "open", "body": "Placeholder export entry.",
+             "user": {"login": "demo"}, "labels": []}]
+slim = [{"number": i.get("number"), "title": i.get("title"), "state": i.get("state"),
+         "author": (i.get("user") or {}).get("login"),
+         "labels": [l.get("name") for l in (i.get("labels") or [])],
+         "body": i.get("body")} for i in data]
+p.write_text(json.dumps(slim, indent=2) + "\n")
+pathlib.Path("issues/README.md").write_text(
+    "# Issue export\n\n"
+    f"{len(slim)} issue(s), exported from the forge API as flat JSON.\n\n"
+    "This is the simplest shape an issues member can take. A git-bug store\n"
+    "(`refs/bugs/*`) would be the richer alternative and would live in this\n"
+    "same namespace.\n")
+PY
+$G add issues; $G commit -qm "issue export as flat JSON"
+git annex init -q "issues-export" >/dev/null 2>&1
+mkdir -p issues/attachments
+annex_from_url issues/attachments/thread-dump.txt \
+  https://raw.githubusercontent.com/python/cpython/main/README.rst
+$G commit -qm "annexed issue attachment"
+member_push "$D" issues --annex; SHA_ISS=$(member_sha "$D")
+echo "   $SHA_ISS"
+
+############################################################ the project
+say "the project itself (refs/heads/main)"
+D=$W/main; $G init -q -b main "$D"; cd "$D"
+git annex init -q "demo-main" >/dev/null 2>&1
+mkdir -p data src
+cat > src/analyze.py <<'EOF'
+"""Stand-in for the project's actual code."""
+
+
+def main() -> None:
+    print("the project's code lives on refs/heads/main, like any repo")
+
+
+if __name__ == "__main__":
+    main()
+EOF
+$G add src/analyze.py; $G commit -qm "the project's code"
+annex_from_url data/sample.dat https://raw.githubusercontent.com/datalad/datalad/maint/README.md
+$G commit -qm "annexed data file in the main repo"
+{ gitmodule tinuous tinuous tinuous 1; gitmodule issues issues issues 1; } > .gitmodules
+$G update-index --add --cacheinfo 160000,"$SHA_TIN",tinuous
+$G update-index --add --cacheinfo 160000,"$SHA_ISS",issues
+cat > README.md <<EOF
+# $BASENAME
+
+One repository holding a **collection of repositories**. The project's own code
+is on \`refs/heads/main\`; everything else lives in a git namespace in this same
+repository, sharing its object store and its access control.
+
+\`\`\`
+refs/heads/main                                        the project (this)
+refs/heads/git-annex                                   shared git-annex branch
+refs/namespaces/tinuous/refs/heads/main                CI archive root
+refs/namespaces/tinuous/refs/namespaces/2025/...        2025 logs (annexed)
+refs/namespaces/tinuous/refs/namespaces/2026/...        2026 logs (annexed)
+refs/namespaces/issues/refs/heads/main                 issue export
+\`\`\`
+
+## A plain clone stays small
+
+\`\`\`console
+git clone <this repo>
+\`\`\`
+
+fetches \`refs/heads/*\` only. The members are **not** pulled: you get the code,
+\`.gitmodules\` and two empty submodule gitlinks.
+
+## Listing the members
+
+\`git ls-remote\` shows every ref, so the members are already visible -- they
+just need the interleaved \`refs/namespaces/\` stripped back out:
+
+\`\`\`console
+git ls-remote <this repo> 'refs/namespaces/*' | while read sha ref; do
+  ns=\${ref#refs/namespaces/}; br=\${ns##*/refs/heads/}; ns=\${ns%/refs/heads/*}
+  printf '%-18s %-10s %s\\n' "\${ns//\\/refs\\/namespaces\\//\/}" "\$br" "\${sha:0:12}"
+done
+\`\`\`
+
+\`\`\`
+issues             main       795c4799edc1
+tinuous            main       e084c6eeb85e
+tinuous/2025       main       94f3ffea2218
+tinuous/2026       main       5239ecb1068c
+\`\`\`
+
+A namespace \`a/b/c\` is stored as
+\`refs/namespaces/a/refs/namespaces/b/refs/namespaces/c/\` -- git interleaves a
+\`refs/namespaces/\` between every component.
+
+## Fetching a member with plain git
+
+\`git submodule update --init --recursive\` works on these, which is not
+obvious: a member's gitlink commit is reachable only from
+\`refs/namespaces/...\`, never from \`refs/heads/*\`. It works because the
+forge advertises \`allow-reachable-sha1-in-want\`, so git fetches the commit
+by SHA after cloning the url -- and a namespaced ref is still a ref, so the
+commit counts as reachable. Both Forgejo-aneksajo and GitHub advertise it.
+
+The catch is that each submodule clone fetches the repository's
+\`refs/heads/*\` first, which is the project itself. To fetch one member
+alone, address it directly. There is no single \`git clone\` for that:
+clone always installs its own \`refs/heads/*\` refspec, and a second one
+pointing at \`refs/remotes/origin/*\` collides with
+
+\`\`\`
+fatal: multiple updates for ref 'refs/remotes/origin/main' not allowed
+\`\`\`
+
+So configure the refspec first, then fetch:
+
+\`\`\`console
+git init tinuous-2026 && cd tinuous-2026
+git remote add origin <this repo>
+
+# this member's branches become origin/*
+git config remote.origin.fetch \\
+  '+refs/namespaces/tinuous/refs/namespaces/2026/refs/heads/*:refs/remotes/origin/*'
+# the shared annex branch, under the only name git-annex will look at
+git config --add remote.origin.fetch '+refs/heads/git-annex:refs/heads/git-annex'
+# so that a later push goes back into the namespace, not to refs/heads/main
+git config remote.origin.push \\
+  'refs/heads/main:refs/namespaces/tinuous/refs/namespaces/2026/refs/heads/main'
+
+git fetch origin
+git checkout -b main origin/main
+git annex init && git annex get logs/
+\`\`\`
+
+For a top-level member such as \`tinuous\`, the prefix is just
+\`refs/namespaces/tinuous\`.
+
+If you only want a look and do not care about fetching the project too, one
+command does work, as long as the refspec maps somewhere that does not clash:
+
+\`\`\`console
+git clone -c remote.origin.fetch='+refs/namespaces/tinuous/refs/heads/*:refs/remotes/member/*' \\
+  <this repo> tinuous
+\`\`\`
+
+but that still pulls \`refs/heads/*\` as well, so it is not a cheap clone.
+
+or let the helper do it:
+
+\`\`\`console
+git-monorepo ls    <this repo>
+git-monorepo clone <this repo> tinuous/2026 ./tinuous-2026
+\`\`\`
+
+\`git-monorepo\` is in
+[con/serve](https://github.com/con/serve/tree/master/projects/self-contain-github-repo/tools).
+
+## Where the annexed content comes from
+
+Files under \`data/\`, \`logs/\` and \`summary/\` are git-annex pointers whose
+content is registered against public URLs, so \`git annex get\` works for
+anyone even if the forge holds nothing.
+
+The forge can hold it too. Forgejo-aneksajo speaks git-annex's P2P-HTTP
+protocol, served at the instance root, so content moves over ordinary
+HTTP(S) -- no SSH needed. git-annex does not discover the endpoint on its
+own, so point it there:
+
+\`\`\`console
+git config remote.origin.annexUrl \\
+  'annex+https://<host>/git-annex-p2phttp/git-annex/'
+git annex copy --to origin
+\`\`\`
+
+(scheme and host of the repository url, then that fixed path). It needs
+git-annex new enough to have \`git annex p2phttp\`; 10.20240129 does not.
+
+All members share one \`refs/heads/git-annex\` branch, which is what lets the
+forge record where each key lives.
+
+## \`.gitmodules\`
+
+Each entry carries a \`monorepo-namespace\` key naming the member's namespace.
+\`url\` points back at this same repository, because that is where the member
+actually lives.
+EOF
+$G add README.md .gitmodules; $G commit -qm "project README and member submodules"
+member_push "$D" "" --annex; echo "   $(member_sha "$D")"
+
+# On an empty Forgejo/Gitea repository the FIRST branch pushed under refs/heads/
+# becomes the default, and that is refs/heads/git-annex here, because the first
+# annexed member creates the shared annex branch before the project exists. Left
+# alone, a plain `git clone` checks out git-annex. Put it back.
+say "default branch"
+if [ -n "${HUB_API:-}" ] && [ -n "${HUB_REPO:-}" ]; then
+  code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 -X PATCH \
+    ${TOKEN:+-H "Authorization: token $TOKEN"} ${HUB_BASICAUTH:+-u "$HUB_BASICAUTH"} \
+    -H 'Content-Type: application/json' -d '{"default_branch":"main"}' \
+    "$HUB_API/repos/$HUB_REPO")
+  if [ "$code" = 200 ]; then echo "   set to main via the API"
+  else echo "   WARNING: could not set default branch (http $code) -- set it to 'main' in the forge UI"; fi
+else
+  echo "   NOT SET: pass HUB_API and HUB_REPO (plus TOKEN or HUB_BASICAUTH) to set it,"
+  echo "   or set the default branch to 'main' in the forge UI. Until then a plain"
+  echo "   clone checks out refs/heads/git-annex."
+fi
+
+say "done -- refs now on the forge"
+git ls-remote "$PUSH" | sed 's|refs/namespaces/|  ns:|' | sed 's/^/  /'
