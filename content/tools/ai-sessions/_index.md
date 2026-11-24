@@ -52,6 +52,11 @@ Tracks exactly which lines were AI-written vs human-authored, stored as git note
 Supports 10+ agents. Provides `git-ai blame` as an AI-aware replacement for `git blame`.
 Rust CLI with IDE decorations and enterprise dashboards.
 
+**[VibeHub](vibehub/)** -- Hosted service that links session transcripts to the commits
+they produced, via a git-wrapping CLI (`vb`) and a Claude Code plugin.
+Transcripts are stored by the service rather than in the repository,
+with JSON and Markdown export. MIT-licensed plugin; closed-source service.
+
 ### Session Capture and Export
 
 **[cctrace](cctrace/)** -- Lightweight Claude Code conversation capture.
